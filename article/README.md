@@ -11,6 +11,8 @@
 - Track 2b, problem 5: Locating where safety lives (CircuitKIT circuits choose the layers we edit)
 - Track 2a, problem 4: Multilingual and code-mixed safety (the per-language gap test)
 
+> **Content note.** This article is about how models answer harmful requests. It quotes no harmful prompt and no model answer to one.
+
 **Abstract**
 
 Tiny Aya Earth gives fewer safe answers to harmful requests than Tiny Aya Global in Javanese with the preamble, on held-out prompts with full-precision weights. In Thai, the language the repairs target, the content-safe rate with the preamble was 89.2% for Earth and 94.9% for Global. That gap did not pass our test (p = 0.0129 against a bar of 0.0036), so every repair result here is exploratory. Almost none of the Javanese gap is harmful content. With the preamble, Earth's 17 fewer safe answers there are 10 more broken answers and 7 more that the judges split on, and both judges called just 1 of 176 answers unsafe for each model.
@@ -26,7 +28,7 @@ We tried five repairs. None met all our pre-set conditions. The arm chosen on th
 > - Is the gap there? Section 7.4. Confirmed only in Javanese, and mostly as broken answers, not harmful ones.
 > - Do the repairs work? Section 7.6. Five arms and a random-layer control. None met all three conditions.
 > - Does the circuit map help? Section 7.7. The circuits are faithful, but the circuit edit did no better than random layers.
-> - Does it survive 4-bit? Section 7.8. What did not work: section 7.10. How to reproduce: section 9.
+> - Does it survive 4-bit? Section 7.8. What did not work: section 7.10. How to reproduce: section 9. What we learned: section 11.
 
 ## 1. Problem statement and approach
 
@@ -69,6 +71,22 @@ We have left that wording as it stands, so that it can be judged as written. It 
 
 The first half of the thesis did not hold as written. The one confirmed gap is in Javanese, outside Earth's region, while in Arabic and Swahili, the languages Earth targets, Earth stays within 1.2 points of Global. It isn't a weakening of refusals either: both models fully refused 33.0% of Javanese harmful prompts with the preamble, though the judges' refusal labels fall below our agreement floor in Javanese, so that figure is rough. Earth's extra failures are broken answers. The second half did not hold either. No repair met all three conditions at full precision, so none could hold at 4-bit, and the arm placed with CircuitKIT's map did no better on Thai safety than the same edit on randomly chosen layers.
 
+### Threat model
+
+- **Who asks.** A user of a deployed assistant types a harmful request directly, in their own language, in a single turn. There is no jailbreak wrapper, no multi-turn pressure and no tool use.
+- **What the deployer controls.** The model file, its precision (FP16 or 4-bit) and the system preamble, which can be kept, replaced or removed. We test with and without it.
+- **What the user cannot change.** The weights and the decoding settings.
+- **The failure we look for.** The same request gets a less safe answer in one language than in another, or the 4-bit file that is deployed is less safe than the full-precision one.
+- **Out of scope.** Adaptive attacks and prompt injection. Code-mixed prompts were tested only in the small development run on Fire (section 7.2). Section 7.11 lists these limits.
+
+### Related work
+
+- **Multilingual safety.** MultiJail showed that models answer harmful requests less safely in lower-resource languages [2]. The Aya red-teaming work collected harmful prompts written by native speakers and studied how to reduce harm across languages [6]. The Tiny Aya report gives each model's worst-language safety rate, and names the languages for Global only [1].
+- **Repair without training.** ReSta adds a safety vector back into a fine-tuned model [10]. WiSE-FT interpolates the weights of two models [12]. C-ΔΘ restricts weight arithmetic to the parts of a model that a circuit selects [11]. Refusal can also be steered along one direction in activation space [13].
+- **Locating behaviour.** EAP-IG scores model components by their effect on a behaviour, and its authors argue that a circuit should be judged by its faithfulness [19].
+- **Compression.** Quantisation can undo unlearning edits [5], which is why we re-test at 4-bit.
+- **Over-refusal.** XSTest measures refusals of safe prompts that look unsafe [8].
+
 ### Our approach
 
 We entered Track 2b, problem 2: repairing safety drift without retraining.
@@ -86,14 +104,14 @@ Tiny Aya Earth is the model under test and repair, and Tiny Aya Global is the re
 
 All safety metrics are per language and use held-out prompts only. Decoding is identical for every model, arm and precision: greedy, up to 256 new tokens, no repetition penalty. Content safety is the primary axis. Refusal is reported alongside it, and over-refusal uses refusal labels.
 
-| Axis | Definition | Why we use it |
-|---|---|---|
-| Content-safe rate (primary) | Share of harmful prompts where both judges label the answer `safe`, using the report's labels: safe, unsafe, invalid | This is the measure behind the report's numbers, so it is the way to test them. A harmless answer to a harmful prompt counts as safe |
-| Unsafe, invalid and disputed shares | Share of harmful prompts in each kind of "not safe". An empty, looping or echoing answer is `invalid` by rule, whatever the judges said | An unsafe answer and a model breaking down are different failures, and they need different fixes |
-| Harmful refusal | Share of harmful prompts labelled `full_refusal` | Shows what the model did. A model can become safer without refusing more |
-| Harmful compliance (secondary) | Share of harmful prompts labelled `full_compliance` | An answer can be safe without being a refusal, so we track this separately |
-| Benign over-refusal | Share of harmless look-alike prompts labelled `full_refusal` | A model that refuses everything would score perfectly on the first axis |
-| Capability | Global-MMLU-Lite accuracy, scored on next-token letter choice | Shows whether an edit damaged general ability. It needs no generation and no judge. Global-MMLU-Lite has no Javanese or Thai, so Indonesian stands in for Javanese and Thai has no capability measure |
+| Axis | Better | Definition | Why we use it |
+|---|---|---|---|
+| Content-safe rate (primary) | Higher | Share of harmful prompts where both judges label the answer `safe`, using the report's labels: safe, unsafe, invalid | This is the measure behind the report's numbers, so it is the way to test them. A harmless answer to a harmful prompt counts as safe |
+| Unsafe, invalid and disputed shares | Lower | Share of harmful prompts in each kind of "not safe". An empty, looping or echoing answer is `invalid` by rule, whatever the judges said | An unsafe answer and a model breaking down are different failures, and they need different fixes |
+| Harmful refusal | Neither: context | Share of harmful prompts labelled `full_refusal` | Shows what the model did. A model can become safer without refusing more |
+| Harmful compliance (secondary) | Neither: context | Share of harmful prompts labelled `full_compliance` | An answer can be safe without being a refusal, so we track this separately |
+| Benign over-refusal | Lower | Share of harmless look-alike prompts labelled `full_refusal` | A model that refuses everything would score perfectly on the first axis |
+| Capability | Higher | Global-MMLU-Lite accuracy, scored on next-token letter choice | Shows whether an edit damaged general ability. It needs no generation and no judge. Global-MMLU-Lite has no Javanese or Thai, so Indonesian stands in for Javanese and Thai has no capability measure |
 
 We never combine the axes into one score. Lexsi's Gemma-4 repair article explains why: "A model that refuses more can simply be a model that refuses everything" [3]. Partial refusals, unclear, invalid and disputed answers are reported next to each axis and never folded in.
 
@@ -195,11 +213,11 @@ We first planned to repair Fire, because it targets South Asian languages, inclu
 
 | Dataset | Use | Languages used | Licence |
 |---|---|---|---|
-| `CohereLabs/aya_redteaming` [6] | Harmful prompts, written natively | en, ar | Apache-2.0 |
-| `DAMO-NLP-SG/MultiJail` [7] | Harmful prompts, 315 parallel items. Same benchmark as the report | en, ar, sw, jv, bn, th, ko. All 10 languages in the pilot | MIT |
-| XSTest v2, via `natolambert/xstest-v2-copy` [8] | 250 safe look-alike prompts and 200 unsafe contrast prompts | en, then translated | CC-BY-4.0 |
-| `CohereLabs/Global-MMLU-Lite` [9] | Capability. `dev` for selection, `test` for reporting | en, ar, sw, bn, ko, and id as a stand-in for Javanese. No Thai | Apache-2.0 |
-| CircuitKIT `jailbreak_binary.csv` | English minimal pairs for circuit discovery. We take the first 256 of 334 and translate them pair by pair | en, jv, bn | LSAL v1.2 |
+| `CohereLabs/aya_redteaming` [6] | Safety benchmark (focus task): harmful prompts, written natively | en, ar | Apache-2.0 |
+| `DAMO-NLP-SG/MultiJail` [7] | Safety benchmark (focus task): harmful prompts, 315 parallel items. Same benchmark as the report | en, ar, sw, jv, bn, th, ko. All 10 languages in the pilot | MIT |
+| XSTest v2, via `natolambert/xstest-v2-copy` [8] | 250 safe look-alike prompts, the over-refusal test (retention check), and 200 unsafe contrast prompts (focus task, English only) | en, then translated | CC-BY-4.0 |
+| `CohereLabs/Global-MMLU-Lite` [9] | Capability (retention check). `dev` for selection, `test` for reporting | en, ar, sw, bn, ko, and id as a stand-in for Javanese. No Thai | Apache-2.0 |
+| CircuitKIT `jailbreak_binary.csv` | Circuit discovery only: English minimal pairs. We take the first 256 of 334 and translate them pair by pair | en, jv, bn | LSAL v1.2 |
 
 ### Why these datasets
 
@@ -215,6 +233,34 @@ Three tasks map to three kinds of evidence. Open-ended answers to harmful and ha
 ### Why these languages
 
 The language set is en, ar, sw, jv, bn, th and ko. Arabic and Swahili are in Earth's region. Javanese, Bengali, Thai and Korean are where the pilot found Earth weakest against Global, and only repair-split items informed that choice (section 7.3). English is the control. Our first plan used en, hi, bn, ta and Hinglish for Fire. Hindi, Tamil and Hinglish are not in this set.
+
+### Prompts by source and language
+
+| Language | MultiJail, harmful | Aya red-teaming, harmful | XSTest contrast, harmful | XSTest look-alikes, benign | Total |
+|---|---:|---:|---:|---:|---:|
+| Arabic | 79 | 218 | 0 | 247 | 544 |
+| Swahili | 298 | 0 | 0 | 231 | 529 |
+| Javanese | 299 | 0 | 0 | 239 | 538 |
+| Bengali | 299 | 0 | 0 | 242 | 541 |
+| Thai | 299 | 0 | 0 | 226 | 525 |
+| Korean | 299 | 0 | 0 | 236 | 535 |
+| English | 66 | 186 | 45 | 248 | 545 |
+| **Total** | **1,639** | **404** | **45** | **1,669** | **3,757** |
+
+These counts cover both splits. The held-out split has 170 to 178 harmful and 142 to 153 benign prompts per language. The benign prompts are the over-refusal test set: XSTest's safe look-alikes in English, and their translations in the six other languages.
+
+### CuratorKIT filtering
+
+CuratorKIT ran once per language, so parallel translations were not treated as duplicates. It read 3,782 prompts and kept 3,778.
+
+| CuratorKIT stage | Removed | Where |
+|---|---:|---|
+| `SchemaGate` (`min_tokens=1`) | 0 | |
+| Exact de-duplication | 3 | 2 Arabic, 1 Swahili |
+| MinHash near-duplicates (threshold 0.85) | 1 | English |
+| `TextCleaner` (HTML stripping off) | 0 | |
+
+Our leakage check then removed 21 more rows, in 4 groups with near-duplicate text across the two splits. That leaves the 3,757 prompts above.
 
 ### Keeping test data clean
 
@@ -276,6 +322,43 @@ The specification names Aya Expanse 32B and Qwen3-32B. A credit-free local pair,
 **Reporting rule.** A language is reported only if the two judges agree well enough. On content labels the floor is Gwet's AC1 of 0.6. On refusal labels it is Cohen's kappa of 0.6. We use AC1 for content because nearly every answer is safe, and kappa then falls towards zero whatever the judges' quality. AC1 shows agreement, not correctness, which is why the audits sit beside it. Languages listed as not measurable: none. Content labels are checked three ways. The local judges' agreement with each other is the AC1 above. On a stratified sample of 1,680 held-out answers from Global, Earth and the selected repair, the 32B router judges gave the same content label in 94% to 100% of the harmful-prompt answers that both pairs could call, per language. Blind model reads in Thai and Javanese, made without the judges' labels, checked the judges' safe calls directly, and found them too lenient on broken Javanese text. Native readers' hand labels are still to come, so every content number here is provisional.
 
 **Specification.** We wrote a specification before the first repair ran, and froze it on 7 November 2026, before the full run began. Up to then, nine corrections followed a small development run (section 7.2). Two more added the content rubric and capped the hand check, three followed the content-rubric pilot, three followed a blind audit of that pilot, two raised batch and selection sample sizes, two settled how baselines and comparison models run, and five followed an audit of the full-run path and a full-size data build (section 7.3). All of them came before any full-run held-out data existed. We froze it without mentor comments on the thresholds, because freezing later would have restarted the run. Two amendments followed the freeze, after the baseline and before any repair result. They added further blind reads as description and changed no test, gate or stage.
+
+#### Settings: CuratorKIT 0.1.21
+
+`Curator` with `CuratorConfig(format="prompt_only", min_tokens=1, dedup="minhash", minhash_threshold=0.85, clean_transforms={"strip_html": False})`, run once per language. HTML stripping is off because jailbreak prompts can contain tags we must keep. We did not use the toxicity gate or the generators. Every other setting is the kit's default.
+
+#### Settings: CircuitKIT 0.2.0
+
+- `Pipeline.from_custom_data`. The clean side is the harmful prompt with the refusal opener, and the corrupt side is the harmless twin with the compliance opener.
+- `discover(algorithm="eap-ig", level="node", sparsity=0.3, ig_steps=3, batch_size=1, seed=0)`, on up to 16 pairs per language, from 256 translated pairs. Sparsity 0.3 keeps 428 of the 612 nodes.
+- `evaluate` with the patching, ablation, baselines and stability pillars, and 3 stability runs.
+- Float32 on CPU, without the preamble.
+
+#### Settings: SafeTune 0.1.12
+
+All weight edits run on CPU in float16. Every knob is set explicitly, because the defaults (ReSta alpha 1.0, steering alpha 20) break Tiny Aya.
+
+| Arm | SafeTune call | Settings |
+|---|---|---|
+| ReSta | `apply_resta(model, base, aligned, alpha, dare=False)` | alpha 0.1, 0.25, 0.4. Base is Tiny Aya Base, aligned is Global |
+| Circuit | `apply_ctheta(model, aligned, negative, info, strength, layer_subset, target_modules)`, with Base as the negative model | strength 0.1, 0.25, 0.4, 0.7, 1.0. Layers 3, 10, 16, 17, 20, 21, 35, all seven attention and MLP projections (49 weight tensors) |
+| Merge-back | `apply_wise_ft(model, aligned, alpha=λ)` | λ 0.25, 0.5 |
+| Circuit merge | `apply_ctheta`, with Earth as the negative model | λ 0.25, 0.5, 0.75, 1.0. Same layers and projections |
+| Steering | `extract_refusal_direction` with `RefusalDirectionConfig(pick_layer=24, pool_method="last_token", normalize=True)`, then `RefusalDirectionModel(mode="steer")` | strength 0.5, 1.0, 2.0. Direction from repair-split harmful and harmless prompts |
+
+#### Settings: AuditKIT 1.1.3
+
+`evaluate(samples, "precomputed", scorers, config=RunConfig(temperature=0.0, extra={"variant": ...}))`, with three custom `@scorer` metrics: judged full refusal and multilingual rule refusal (maximise), and the judges' `unclear` rate (minimise). Each run is saved as JSON with its `lexsi_provenance.json`. We did not use the built-in refusal detector or the paired bootstrap (section 2).
+
+#### Settings: our pipeline, and seeds
+
+- **Generation.** Greedy, at most 256 new tokens, repetition penalty 1.0, batch 16, float16.
+- **Knob selection.** Up to 80 repair prompts per language and kind, at most 128 new tokens.
+- **Statistics.** 10,000 bootstrap resamples and the exact McNemar test.
+- **Seeds.** Split 20261103. CircuitKIT discovery seed 0, with 3 stability seeds. Random-layer controls 1, 2 and 3. Generation and judging are greedy, so they need no seed.
+- **Ablations.** Each circuit arm has a whole-model twin, and the best circuit arm has a random-layer control (section 7.7).
+
+The full configuration is `configs/spec.yaml` in the code repo.
 
 ### 7.2 The development run: what it taught us
 
@@ -561,15 +644,17 @@ A team deploying a small multilingual model can reuse these parts:
 
 **Cost.** Tiny Aya's licence is non-commercial, so this comparison is hypothetical. Commercial use needs a licence from Cohere, and we do not know its price. We assume 600,000 requests a month, each with 516 input tokens and 200 output tokens. Closed-model prices are list prices checked on 5 November 2026 [14, 15, 16]. GPU prices are from Hugging Face Inference Endpoints and RunPod [17, 18].
 
-| Option | Price | Monthly cost at this volume |
-|---|---|---:|
-| `gpt-5-nano` | $0.05 in / $0.40 out per 1M tokens | $63.48 |
-| Claude Haiku 5.5 | $0.10 in / $0.50 out | $90.96 |
-| `gemini-3.1-flash-lite` | $0.25 in / $1.50 out | $257.40 |
-| `gpt-5-mini` | $0.25 in / $2.00 out | $317.40 |
-| Claude Haiku 4.5 | $1.00 in / $5.00 out | $909.60 |
-| Tiny Aya on one always-on RTX A5000 (RunPod Secure) | $0.27 per hour | $197.10 |
-| Tiny Aya on one always-on T4 (HF Endpoints) | $0.50 per hour | $365.00 |
+| Option | Price | Monthly cost at this volume | Per 1,000 replies |
+|---|---|---:|---:|
+| `gpt-5-nano` | $0.05 in / $0.40 out per 1M tokens | $63.48 | $0.106 |
+| Claude Haiku 5.5 | $0.10 in / $0.50 out | $90.96 | $0.152 |
+| `gemini-3.1-flash-lite` | $0.25 in / $1.50 out | $257.40 | $0.429 |
+| `gpt-5-mini` | $0.25 in / $2.00 out | $317.40 | $0.529 |
+| Claude Haiku 4.5 | $1.00 in / $5.00 out | $909.60 | $1.516 |
+| Tiny Aya on one always-on RTX A5000 (RunPod Secure) | $0.27 per hour | $197.10 | $0.11 when busy |
+| Tiny Aya on one always-on T4 (HF Endpoints) | $0.50 per hour | $365.00 | $0.20 when busy |
+
+For Tiny Aya, the per-1,000 figure is time × hourly price. At the laptop's measured rates (159 output tokens and about 3,000 prompt tokens per second, with 12 requests at once), 1,000 replies of 516 input and 200 output tokens take about 24 minutes. That assumes the rented GPU is at least as fast as the laptop and never idle. An always-on GPU at 600,000 requests a month works out at $0.33 (A5000) and $0.61 (T4) per 1,000.
 
 At this volume, the cheapest closed models cost less than one always-on GPU. One always-on A5000 matches `gpt-5-nano` at about 1.86 million requests a month and `gpt-5-mini` at about 373,000. Those figures exclude engineering time, which favours self-hosting, and assume the GPU can keep up. We measured 159 output tokens per second on a laptop RTX 4060 (8 GB), with llama.cpp serving the full-precision model to 12 requests at once. The cost case for self-hosting is weak at low volume. The stronger reasons are that data stays on your own hardware, the model runs offline, and you can test the exact file you deploy.
 
@@ -617,21 +702,21 @@ We did not test closed models on our safety axes, so this table compares cost al
 
 Everything above ran on one laptop with an RTX 4060 (8 GB), an Apple M1 Max for the development run, and, for the last day, two GPUs rented through Hugging Face Jobs: an A10G for the NF4 checks and an L40S for one baseline, and a free Kaggle T4 that repeated the NF4 checks, with about $15 of Hugging Face credits. Credits would buy better measurement first, and scale second.
 
-| Step | Now | With more credits | What it would settle | Before | After |
+| Step | Now | With more credits | What it would settle | Before | Expected after |
 |---|---|---|---|---|---|
-| Report's judge | local 8B judges, and Command A on a 1,680-answer sample | Command A on every answer, in its contextual safety mode | Whether the difference from the report comes from the judge | 9.7 points | On the sample: 3.8 points with Command A, 1.9 with our judges |
-| Precision | Seven languages at full precision, all 10 only at 4-bit in a pilot | Full-precision run of all 10 MultiJail languages | Whether 4-bit weights move the gap, and whether it sits in a language we left out | Largest pilot gap: Javanese, 9.9 points with the preamble (4-bit, a planning signal) | To measure |
-| Full prompt set | 170 to 178 | All 315 MultiJail items in both preamble conditions | Tighter intervals per language | Gap intervals 4.7 to 11.4 points wide | To measure |
-| Judge quality | No hand labels yet; blind model reads in Thai and Javanese | 32B judges on every cell, and paid native reviewers | Judge accuracy per language | Not measured | To measure |
-| More models | Earth repaired; Fire and Water measured only | Repairs for Fire and Water, with the same pipeline | Whether results hold across regional models | n/a | To measure |
-| More languages | Earth's seven | Hausa, Yoruba, Urdu, Amharic and Zulu | Coverage where safety data is thinnest | n/a | To measure |
-| Native benign prompts | Translated XSTest | Written by native speakers | True over-refusal outside English | +2.1 | To measure |
-| Wider capability | Global-MMLU-Lite | Full Global-MMLU, INCLUDE, a generation benchmark, and a real measure for Javanese and Thai | Whether edits cost more than multiple-choice shows | +1.3 | To measure |
-| Harder prompts | Direct requests | Jailbreak wrappers, multi-turn attacks | Whether results hold under pressure | n/a | To measure |
-| Training-based arm | Not run | Circuit-restricted LoRA, distilling Global's judged answers | Whether training beats arithmetic | n/a | To measure |
-| Decoding | Greedy, one run | Sampling with several seeds | Variance per cell | n/a | To measure |
+| Report's judge | local 8B judges, and Command A on a 1,680-answer sample | Command A on every answer, in its contextual safety mode | Whether the difference from the report comes from the judge | Javanese gap 9.7 points with our judges | A larger gap. On the sample, Command A gave 3.8 points against our judges' 1.9, and 15.1 against 10.1 in Javanese |
+| Precision | Seven languages at full precision, all 10 only at 4-bit in a pilot | Full-precision run of all 10 MultiJail languages | Whether 4-bit weights move the gap, and whether it sits in a language we left out | Largest pilot gap: Javanese, 9.9 points with the preamble (4-bit, a planning signal) | Javanese stays the largest gap, near the 9.7 points we measured at full precision |
+| Full prompt set | 170 to 178 | All 315 MultiJail items in both preamble conditions | Tighter intervals per language | Gap intervals 4.7 to 11.4 points wide | About a quarter narrower, 3.5 to 8.5 points, because width falls with the square root of the sample size |
+| Judge quality | No hand labels yet; blind model reads in Thai and Javanese | 32B judges on every cell, and paid native reviewers | Judge accuracy per language | Not measured | Judges close to hand labels in Thai, and too lenient in Javanese, where blind reads found 34 of 207 "safe" calls invalid |
+| More models | Earth repaired; Fire and Water measured only | Repairs for Fire and Water, with the same pipeline | Whether results hold across regional models | Fire's Javanese gap 10.8 points on the judges' numbers | A Javanese gap in Fire made mostly of broken answers, as in Earth |
+| More languages | Earth's seven | Hausa, Yoruba, Urdu, Amharic and Zulu | Coverage where safety data is thinnest | n/a | Gaps like Javanese's, mostly broken answers, where the models' tuning data is thin |
+| Native benign prompts | Translated XSTest | Written by native speakers | True over-refusal outside English | +2.1 | A larger over-refusal rise outside English than translated XSTest shows |
+| Wider capability | Global-MMLU-Lite | Full Global-MMLU, INCLUDE, a generation benchmark, and a real measure for Javanese and Thai | Whether edits cost more than multiple-choice shows | +1.3 | A drop larger than 1.3 points on generation tasks, largest for the whole-model arms |
+| Harder prompts | Direct requests | Jailbreak wrappers, multi-turn attacks | Whether results hold under pressure | n/a | Lower safe rates for every model |
+| Training-based arm | Not run | Circuit-restricted LoRA, distilling Global's judged answers | Whether training beats arithmetic | n/a | Fewer broken Javanese answers, which the selected arm left broken at full precision |
+| Decoding | Greedy, one run | Sampling with several seeds | Variance per cell | n/a | A spread of about 2 points per cell, like our two NF4 runs (within 1.7 points) |
 
-We estimate these steps at about 300 laptop GPU hours and about $470 of judge calls. We would run them in table order, and we would report any result that overturns a finding above.
+The "Expected after" column is our forecast, not a result. We estimate these steps at about 300 laptop GPU hours and about $470 of judge calls. We would run them in table order, and we would report any result that overturns a finding above.
 
 ## 9. Reproduction
 
@@ -673,10 +758,24 @@ Everything in this article was built during the hackathon: the code, the data pi
 - Our earlier project Kavach (HackIndia AgentVerse '26, MIT licence) also kept a hash-chained run log. No code from it is reused here.
 - The models, datasets and Lexsi kits we build on are other people's work. Sections 2 to 4 list each one with its licence.
 
-## 11. Team
+## 11. What we learned
+
+- **Averages hide where a gap sits.** With the preamble, Earth's mean safe rate over seven languages is 4.4 points below Global's, while Javanese alone is 9.7 points below. A safety check needs to report each language.
+- **"Not safe" is often "broken", not "harmful".** Most of Earth's lost safe answers in Javanese were invalid text, and the selected repair left them broken (section 7.6). An edit that moves refusals cannot fix a model that loops.
+- **A faithful circuit is not a better edit.** The circuits passed the patching test, but the edit restricted to them did no better than the same edit on random layers. Finding where a behaviour lives and repairing it are different problems.
+- **Test the file you ship.** 4-bit quantisation cost 2 to 4 safe points on average, and about 10 in Earth's Javanese. A full-precision result says little about a 4-bit deployment.
+- **The frozen test changed what we could claim.** Thai, our target, missed the corrected bar, so every repair result is exploratory. Without the test fixed in advance, a 5.7-point gap could have been read as a confirmed one.
+
+Section 7.9 covers what this means for a team deploying a small model, and section 8 lists the next steps.
+
+## 12. Team
 
 - Aditya Arnav: [@HydraOfMalice](https://huggingface.co/HydraOfMalice)
 - Pallab Das: [@PDGamerSG](https://huggingface.co/PDGamerSG)
+
+**Author contributions.** Both authors designed the study, built the pipeline, ran the experiments and wrote the article.
+
+**Acknowledgements.** Lexsi Labs ran the hackathon and built the four kits we used. Cohere Labs released Tiny Aya and Aya Expanse, and the Qwen team released the Qwen3 judges. The authors of MultiJail, Aya red-teaming, XSTest and Global-MMLU-Lite released the data we test on.
 
 ## References
 
@@ -700,3 +799,14 @@ Everything in this article was built during the hackathon: the code, the data pi
 18. RunPod pricing. https://www.runpod.io/pricing
 19. Hanna, M., Pezzelle, S., Belinkov, Y. (2024). *Have Faith in Faithfulness* (EAP-IG). arXiv:2403.17806.
 20. Lexsi Labs kits: SafeTune (arXiv:2609.22153), CircuitKIT (arXiv:2607.19317), CuratorKIT (arXiv:2606.21631), AuditKIT (arXiv:2610.22511). https://github.com/Lexsi-Labs
+
+## Appendix
+
+- **Judge prompts and rubrics.** Both rubrics, word for word, are in [`src/langsafe/judge/llm_judge.py`](https://github.com/Hydra-Of-Malice/LEXSI-Hackathon-Project/blob/main/src/langsafe/judge/llm_judge.py). The rule for degenerate answers and the refusal phrases are in [`src/langsafe/judge/rules.py`](https://github.com/Hydra-Of-Malice/LEXSI-Hackathon-Project/blob/main/src/langsafe/judge/rules.py).
+- **Extra tables.** Every per-language table, both preamble conditions, every knob and the 4-bit runs are in the [results report](https://huggingface.co/datasets/HydraOfMalice/tiny-aya-earth-langsafe-eval/blob/main/reports/report.md).
+- **Sample outputs.** We show no sample answers, because we never publish a model's answer to a harmful prompt (section 7.12). The prompts and every label are in the evaluation set.
+
+## Changelog
+
+- **Version 2, 16 November 2026.** Matched the write-up layout on the submit page. Added a content note, the threat model, related work, which direction is better for each metric, prompt counts by source and language, CuratorKIT's filtering counts, the settings for each kit, seeds, cost per 1,000 replies, expected results with more credits, what we learned, author contributions, acknowledgements and this appendix. No result changed.
+- **Version 1.** First submission.
