@@ -300,8 +300,8 @@ Collection: https://huggingface.co/collections/HydraOfMalice/same-model-differen
 | Evaluation set | https://huggingface.co/datasets/HydraOfMalice/tiny-aya-earth-langsafe-eval | Prompts and labels only |
 | Aggregate results | https://huggingface.co/datasets/HydraOfMalice/tiny-aya-earth-langsafe-eval/tree/main/reports | Per-language rates, intervals, paired tests, judge agreement |
 | Run logs | https://huggingface.co/datasets/HydraOfMalice/tiny-aya-earth-langsafe-eval/tree/main/provenance | Hashes, settings, provenance and scores, with all model text removed |
-| Code and notebook | https://github.com/Hydra-Of-Malice/LEXSI-Hackathon-Project, https://github.com/Hydra-Of-Malice/LEXSI-Hackathon-Project/blob/main/notebooks/01_reproduce_results.ipynb | Pipeline and reproduction steps |
-| Demo | https://github.com/Hydra-Of-Malice/LEXSI-Hackathon-Project/tree/main/space | A results explorer built from the aggregate reports. It loads no model and has no text box, so it cannot show model text. Run it with `python space/app.py` |
+| Code and notebook | https://github.com/Hydra-Of-Malice/same-model-different-language, https://github.com/Hydra-Of-Malice/same-model-different-language/blob/main/notebooks/01_reproduce_results.ipynb | Pipeline and reproduction steps |
+| Demo | https://github.com/Hydra-Of-Malice/same-model-different-language/tree/main/space | A results explorer built from the aggregate reports. It loads no model and has no text box, so it cannot show model text. Run it with `python space/app.py` |
 
 No released file contains a model's answer to a harmful prompt.
 
@@ -720,7 +720,7 @@ The "Expected after" column is our forecast, not a result. We estimate these ste
 
 ## 9. Reproduction
 
-All of this runs from the code repo, https://github.com/Hydra-Of-Malice/LEXSI-Hackathon-Project. Its README and `docs/RUNBOOK.md` hold the full details.
+All of this runs from the code repo, https://github.com/Hydra-Of-Malice/same-model-different-language. Its README and `docs/RUNBOOK.md` hold the full details.
 
 **Environment.** Python 3.12 and `uv`. We ran the full run on a laptop RTX 4060 with 8 GB of memory, and the small development run on an Apple M1 Max. The NF4 checks need CUDA, because bitsandbytes has no Mac backend. CircuitKIT runs in its own environment, and the GGUF checks use llama.cpp. The test suite runs on CPU, and GitHub Actions runs it on every push.
 
@@ -802,7 +802,7 @@ Section 7.9 covers what this means for a team deploying a small model, and secti
 
 ## Appendix
 
-- **Judge prompts and rubrics.** Both rubrics, word for word, are in [`src/langsafe/judge/llm_judge.py`](https://github.com/Hydra-Of-Malice/LEXSI-Hackathon-Project/blob/main/src/langsafe/judge/llm_judge.py). The rule for degenerate answers and the refusal phrases are in [`src/langsafe/judge/rules.py`](https://github.com/Hydra-Of-Malice/LEXSI-Hackathon-Project/blob/main/src/langsafe/judge/rules.py).
+- **Judge prompts and rubrics.** Both rubrics, word for word, are in [`src/langsafe/judge/llm_judge.py`](https://github.com/Hydra-Of-Malice/same-model-different-language/blob/main/src/langsafe/judge/llm_judge.py). The rule for degenerate answers and the refusal phrases are in [`src/langsafe/judge/rules.py`](https://github.com/Hydra-Of-Malice/same-model-different-language/blob/main/src/langsafe/judge/rules.py).
 - **Extra tables.** Every per-language table, both preamble conditions, every knob and the 4-bit runs are in the [results report](https://huggingface.co/datasets/HydraOfMalice/tiny-aya-earth-langsafe-eval/blob/main/reports/report.md).
 - **Sample outputs.** We show no sample answers, because we never publish a model's answer to a harmful prompt (section 7.12). The prompts and every label are in the evaluation set.
 

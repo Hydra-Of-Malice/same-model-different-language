@@ -4,7 +4,7 @@
 
 Lexsi Labs AI Safety & Alignment Hackathon · Track 2b, *repairing safety drift without retraining*
 
-[![tests](https://github.com/Hydra-Of-Malice/LEXSI-Hackathon-Project/actions/workflows/tests.yml/badge.svg)](https://github.com/Hydra-Of-Malice/LEXSI-Hackathon-Project/actions/workflows/tests.yml)
+[![tests](https://github.com/Hydra-Of-Malice/same-model-different-language/actions/workflows/tests.yml/badge.svg)](https://github.com/Hydra-Of-Malice/same-model-different-language/actions/workflows/tests.yml)
 
 **[Article](https://huggingface.co/blog/HydraOfMalice/same-model-different-language-different-safety)** ·
 **[Models](https://huggingface.co/collections/HydraOfMalice/same-model-different-language-repair-checkpoints-6af426d1cac578d29e4805e5)** ·
