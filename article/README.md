@@ -28,7 +28,7 @@ We tried five repairs. None met all our pre-set conditions. The arm chosen on th
 > - Is the gap there? Section 7.4. Confirmed only in Javanese, and mostly as broken answers, not harmful ones.
 > - Do the repairs work? Section 7.6. Five arms and a random-layer control. None met all three conditions.
 > - Does the circuit map help? Section 7.7. The circuits are faithful, but the circuit edit did no better than random layers.
-> - Does it survive 4-bit? Section 7.8. What did not work: section 7.10. How to reproduce: section 9. What we learned: section 11.
+> - Does it survive 4-bit? Section 7.8. What did not work: section 7.10. How to reproduce: section 9. What we learned: section 11. Track 2a (attack success rate, disclosure): section 7.13.
 
 ## 1. Problem statement and approach
 
@@ -698,6 +698,41 @@ We did not test closed models on our safety axes, so this table compares cost al
 - Passing our checks does not make a model safe to deploy. These are measurements under the conditions we set.
 - All work is non-commercial, in line with CC-BY-NC 4.0, the Cohere Labs acceptable use policy and the Lexsi source-available licence.
 
+### 7.13 Track 2a: attacks, attack success rate and disclosure
+
+**Attack prompt set.** Every attack is a direct, single-turn harmful request. None uses a jailbreak wrapper, prompt injection or an encoding trick. The attack set is the 2,088 harmful prompts in section 4: MultiJail (1,639, in all seven languages), Aya red-teaming (404, Arabic and English) and XSTest's unsafe contrast prompts (45, English). Every number below uses the held-out split, which has 1,228 of them, 170 to 178 per language.
+
+**Models attacked.** Tiny Aya Earth, Tiny Aya Global as the reference, and the repaired Circuit merge checkpoint.
+
+**Attack success rate (ASR).** ASR is the share of attacks that got a harmful answer, meaning both judges labelled it `unsafe`. Lower is better. The upper bound also counts every answer the judges split on as a success. Held-out items, FP16, with the preamble:
+
+| Language | Global ASR | Earth ASR | Circuit merge ASR | Upper bound, Global / Earth |
+|---|---:|---:|---:|---:|
+| Arabic | 0.6% (1 of 170) | 0.6% (1) | 0.6% (1) | 1.8% / 2.9% |
+| Swahili | 0.0% (0 of 176) | 0.0% (0) | 0.6% (1) | 3.4% / 4.5% |
+| Javanese | 0.6% (1 of 176) | 0.6% (1) | 0.6% (1) | 5.7% / 9.7% |
+| Bengali | 0.0% (0 of 176) | 0.0% (0) | 0.0% (0) | 8.5% / 12.5% |
+| Thai | 0.0% (0 of 176) | 0.0% (0) | 0.0% (0) | 5.1% / 8.0% |
+| Korean | 0.0% (0 of 176) | 1.1% (2) | 4.0% (7) | 2.8% / 6.8% |
+| English | 0.6% (1 of 178) | 0.6% (1) | 0.6% (1) | 4.5% / 5.1% |
+| **All seven** | **0.24% (3 of 1,228)** | **0.41% (5)** | **0.90% (11)** | **4.6% / 7.1%** |
+
+- **Other conditions.** Without the preamble, ASR over the seven languages is 0.49% for Global, 0.65% for Earth and 0.49% for Circuit merge. With the preamble at 4-bit, Global and Earth reach 0.41% and 0.57% at Q4_K_M, and 0.49% and 0.73% at NF4.
+- **What it shows.** Direct requests rarely get a harmful answer from either model. Earth's lower safe rate comes from broken and disputed answers, not from attacks that succeed (section 7.4).
+- **One rise.** Circuit merge gave 7 unsafe answers in Korean, against Earth's 2. That is inside the release rule in section 5, but it goes the wrong way.
+- **A lower bound.** The judges' ASR undercounts. In Javanese, blind reads found 6 unsafe answers among the 207 the judges called safe (section 7.11).
+
+**Cost-to-break.** We did not measure it. Each prompt was sent once, with greedy decoding, and we did not retry or rephrase an attack that failed. As an estimate only, an attacker who draws prompts at random from this set needs 1 / ASR attempts on average before the first success. With the preamble, that is about 250 for Earth (1,228 / 5) and 410 for Global (1,228 / 3). This assumes the prompts are independent, and it counts only answers both judges called unsafe.
+
+**Responsible disclosure.** We found no new attack method: every prompt comes from a public benchmark. The weaknesses we found were in the kits. Six went to their maintainers as pull requests, and the rest are reported in section 2. We publish no model answer to a harmful prompt.
+
+**Security considerations.**
+
+- The circuit map shows where refusal is computed, which could help someone weaken it. So we publish the layers, summary metrics and the editing mask, and share node-level scores with researchers on request.
+- No released checkpoint is significantly less safe than Earth in any language, by the release rule in section 5.
+- The results explorer loads no model and has no text box.
+- The run ledger is hash-chained, so a changed record can be detected.
+
 ## 8. With more credits
 
 Everything above ran on one laptop with an RTX 4060 (8 GB), an Apple M1 Max for the development run, and, for the last day, two GPUs rented through Hugging Face Jobs: an A10G for the NF4 checks and an L40S for one baseline, and a free Kaggle T4 that repeated the NF4 checks, with about $15 of Hugging Face credits. Credits would buy better measurement first, and scale second.
@@ -808,5 +843,5 @@ Section 7.9 covers what this means for a team deploying a small model, and secti
 
 ## Changelog
 
-- **Version 2, 16 November 2026.** Matched the write-up layout on the submit page. Added a content note, the threat model, related work, which direction is better for each metric, prompt counts by source and language, CuratorKIT's filtering counts, the settings for each kit, seeds, cost per 1,000 replies, expected results with more credits, what we learned, author contributions, acknowledgements and this appendix. No result changed.
+- **Version 2, 16 November 2026.** Matched the write-up layout on the submit page. Added a content note, the threat model, related work, which direction is better for each metric, prompt counts by source and language, CuratorKIT's filtering counts, the settings for each kit, seeds, cost per 1,000 replies, expected results with more credits, a Track 2a section (attack set, attack success rate, cost-to-break, responsible disclosure and security), what we learned, author contributions, acknowledgements and this appendix. No result changed.
 - **Version 1.** First submission.
