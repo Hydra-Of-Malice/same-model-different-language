@@ -40,6 +40,13 @@ LOCK = threading.Lock()
 # Thread count and retry budget for each router client (`--workers`, `--retries`). Neither enters the cache key, so a
 # faster run reuses every verdict already paid for.
 CLIENT_DEFAULTS: dict = {}
+# `--cache-only`: every verdict must come from the cache. A request that would reach a provider raises instead, so an
+# unattended run can never bill.
+CACHE_ONLY = {'on': False}
+
+
+class WouldBill(RuntimeError):
+    pass
 # Judge sets beside the spec's router pair. Kept here, not in the frozen spec: they are an extra comparison, not judges
 # a headline number rests on.
 JUDGE_SETS = {
@@ -84,6 +91,8 @@ def record_usage() -> None:
         create = self.client.chat.completions.create
 
         def counted(**request):
+            if CACHE_ONLY['on']:
+                raise WouldBill(f"--cache-only: {request.get('model')} is not cached for an answer")
             response = create(**request)
             usage = getattr(response, 'usage', None)
             with LOCK:
@@ -202,6 +211,8 @@ def main(argv=None) -> int:
                              'the sample folders are left as they are')
     parser.add_argument('--workers', type=int, help='parallel requests per judge (the client default is 8)')
     parser.add_argument('--retries', type=int, help='attempts per request before the run stops (the default is 5)')
+    parser.add_argument('--cache-only', action='store_true',
+                        help='make no billed call: stop if any verdict is missing from the cache')
     args = parser.parse_args(argv)
     if args.judge_set != 'router' and args.write_calibration:
         raise SystemExit("--write-calibration takes the spec's router pair, not --judge-set " + args.judge_set)
@@ -209,6 +220,9 @@ def main(argv=None) -> int:
         raise SystemExit('--all judges every answer: it takes neither --pilot nor --write-calibration')
     USAGE.clear()  # one entry per call of main(), not a running total across calls in one process
     CLIENT_DEFAULTS.clear()
+    CACHE_ONLY['on'] = args.cache_only
+    if args.cache_only:
+        CLIENT_DEFAULTS['max_retries'] = 1  # fail on the first miss, without backing off
     CLIENT_DEFAULTS.update({key: value for key, value in (('workers', args.workers), ('max_retries', args.retries))
                             if value is not None})
     run = args.run.resolve()

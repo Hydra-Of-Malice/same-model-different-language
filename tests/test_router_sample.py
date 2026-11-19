@@ -400,3 +400,16 @@ def test_warm_pins_provider_and_stops_at_max_calls(offline_router, tmp_path):
     offline_router.clear()
     assert _module().main(['--run', str(run), '--tags', 'global', '--all', '--execute']) == 0
     assert {r['model'] for r in offline_router} == {'CohereLabs/aya-expanse-32b:cohere'}  # pinned verdicts are hits
+
+
+def test_cache_only_never_bills(offline_router, tmp_path, capsys):
+    module = _module()
+    run = _mini_run(tmp_path)
+    with pytest.raises(module.WouldBill):
+        module.main(['--run', str(run), '--tags', 'global', '--all', '--execute', '--cache-only'])
+    assert offline_router == []
+    assert module.main(['--run', str(run), '--tags', 'global', '--all', '--execute']) == 0  # fills the cache
+    offline_router.clear()
+    assert module.main(['--run', str(run), '--tags', 'global', '--all', '--execute', '--cache-only']) == 0
+    assert offline_router == []
+    module.CACHE_ONLY['on'] = False
