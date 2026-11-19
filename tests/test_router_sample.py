@@ -381,3 +381,22 @@ def test_warmed_cache_is_what_the_full_run_reads(offline_router, tmp_path, capsy
     assert len(offline_router) == 36 and {r['model'] for r in offline_router} == {'CohereLabs/aya-expanse-32b:cohere'}
     lines = (tmp_path / 'full' / 'earth-router-full' / 'usage.jsonl').read_text(encoding='utf-8').splitlines()
     assert len(lines) == 2 and 'warm_cache' in lines[0]
+
+
+def test_warm_pins_provider_and_stops_at_max_calls(offline_router, tmp_path):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location('warm_judge_cache', ROOT / 'scripts' / 'warm_judge_cache.py')
+    warm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(warm)
+    run = _mini_run(tmp_path)
+    args = ['--run', str(run), '--tags', 'global', '--judge', 'second-judge', '--chunk', '4', '--execute']
+    assert warm.main([*args, '--provider', 'deepinfra', '--max-calls', '5']) == 0
+    # Chunks of 4 items; the limit is checked between chunks, so it stops after the second (fewer than 36 calls).
+    assert 5 <= len(offline_router) <= 8 and {r['model'] for r in offline_router} == {'Qwen/Qwen3-32B:deepinfra'}
+    first = len(offline_router)
+    assert warm.main(args) == 0  # unpinned, no limit: the rest, with nothing billed twice
+    assert len(offline_router) == 36 and {r['model'] for r in offline_router[first:]} == {'Qwen/Qwen3-32B'}
+    offline_router.clear()
+    assert _module().main(['--run', str(run), '--tags', 'global', '--all', '--execute']) == 0
+    assert {r['model'] for r in offline_router} == {'CohereLabs/aya-expanse-32b:cohere'}  # pinned verdicts are hits
