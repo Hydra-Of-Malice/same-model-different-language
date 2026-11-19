@@ -359,3 +359,25 @@ def test_all_judges_every_answer_into_its_own_folder(offline_router, tmp_path, c
     assert len(lines) == 2 and _json.loads(lines[1])['usage'] == {}
     with pytest.raises(SystemExit, match='--all'):
         module.main(['--run', str(run), '--tags', 'global', '--all', '--write-calibration'])
+
+
+def test_warmed_cache_is_what_the_full_run_reads(offline_router, tmp_path, capsys):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location('warm_judge_cache', ROOT / 'scripts' / 'warm_judge_cache.py')
+    warm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(warm)
+    run = _mini_run(tmp_path)
+    assert warm.main(['--run', str(run), '--tags', 'global', '--judge', 'second-judge', '--chunk', '5']) == 0
+    assert offline_router == []  # plan only
+    assert warm.main(['--run', str(run), '--tags', 'global', '--judge', 'second-judge', '--chunk', '5',
+                      '--execute']) == 0
+    # Qwen alone: the refusal rubric on 24 answers, the content rubric on the 12 harmful ones.
+    assert len(offline_router) == 36 and {r['model'] for r in offline_router} == {'Qwen/Qwen3-32B'}
+    offline_router.clear()
+    capsys.readouterr()
+    assert _module().main(['--run', str(run), '--tags', 'global', '--all', '--execute']) == 0
+    # The full run finds every Qwen verdict in the cache and bills only Aya.
+    assert len(offline_router) == 36 and {r['model'] for r in offline_router} == {'CohereLabs/aya-expanse-32b:cohere'}
+    lines = (tmp_path / 'full' / 'earth-router-full' / 'usage.jsonl').read_text(encoding='utf-8').splitlines()
+    assert len(lines) == 2 and 'warm_cache' in lines[0]
