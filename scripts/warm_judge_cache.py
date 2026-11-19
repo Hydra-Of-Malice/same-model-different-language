@@ -6,7 +6,12 @@ one waits. This sends one judge's requests (both rubrics, every answer of the gi
 full run reads, with the same messages and parameters, so the full run finds them as cache hits. It writes no
 verdict file and prints only counts.
 
-    python scripts/warm_judge_cache.py --judge second-judge --tags global,earth --workers 32 --execute
+    python scripts/warm_judge_cache.py --judge second-judge --tags global,earth --workers 32 --provider deepinfra --execute
+
+Tags are done in the order given, each with both rubrics, so a run stopped by `--max-calls` leaves only the last tags
+undone. `--provider` pins the router's provider for the requests only: the cache key keeps the spec's model name, as
+the spec never pins a provider, so the full run still finds the verdicts. Pin one when the router's automatic choice
+is far dearer than a listed provider (on 20 Nov it sent Qwen3-32B to a route costing over ten times deepinfra's price).
 """
 from __future__ import annotations
 
@@ -31,6 +36,8 @@ def main(argv=None) -> int:
     parser.add_argument('--workers', type=int, default=16)
     parser.add_argument('--retries', type=int, default=10)
     parser.add_argument('--chunk', type=int, default=2000)
+    parser.add_argument('--provider', help='pin the router provider for these requests, e.g. deepinfra')
+    parser.add_argument('--max-calls', type=int, help='stop, between chunks, once this many calls have been billed')
     parser.add_argument('--execute', action='store_true')
     args = parser.parse_args(argv)
     run = args.run.resolve()
@@ -45,16 +52,20 @@ def main(argv=None) -> int:
     spec = load_spec()
     cfg = next(c for c in spec['judging']['judges'] if c['name'] == args.judge)
     prompts = {p.id: p for p in read_prompts(run / 'data' / 'heldout.jsonl')}
-    refusal, content = {}, {}
+    refusal, content = {}, {}  # insertion order: tag by tag, as given
+    order = []
     for tag in args.tags.split(','):
         with open(run / 'gens' / f'{tag}.jsonl', encoding='utf-8') as stream:
             for line in stream:
                 if line.strip():
                     row = json.loads(line)
                     item = (prompts[row['id']].text, row['response'], row['lang'])
-                    refusal[item] = None
-                    if row['kind'] == 'harmful':
+                    if item not in refusal:
+                        refusal[item] = None
+                        order.append(('refusal', item))
+                    if row['kind'] == 'harmful' and item not in content:
                         content[item] = None
+                        order.append(('content', item))
     print(json.dumps({'judge': args.judge, 'model': cfg['model'], 'refusal_items': len(refusal),
                       'content_items': len(content)}), flush=True)
     if not args.execute:
@@ -77,6 +88,8 @@ def main(argv=None) -> int:
         create = self.client.chat.completions.create
 
         def counted(**request):
+            if args.provider:
+                request['model'] = request['model'].split(':')[0] + ':' + args.provider
             response = create(**request)
             u = getattr(response, 'usage', None)
             with lock:
@@ -91,17 +104,24 @@ def main(argv=None) -> int:
     judge = LLMJudge(cfg['name'], cfg['base_url'], cfg['model'])
     start = time.time()
     try:
-        for rubric, items, call in (('refusal', list(refusal), judge.judge_many),
-                                    ('content', list(content), judge.judge_safety_many)):
-            for i in range(0, len(items), args.chunk):
-                call(items[i:i + args.chunk])
-                print(json.dumps({'rubric': rubric, 'done': min(i + args.chunk, len(items)), 'of': len(items),
-                                  'billed_calls': usage['calls'], 'minutes': round((time.time() - start) / 60, 1)}),
-                      flush=True)
+        for i in range(0, len(order), args.chunk):
+            if args.max_calls is not None and usage['calls'] >= args.max_calls:
+                print(json.dumps({'stopped': 'max-calls', 'billed_calls': usage['calls'], 'done': i,
+                                  'of': len(order)}), flush=True)
+                break
+            chunk = order[i:i + args.chunk]
+            for rubric, call in (('refusal', judge.judge_many), ('content', judge.judge_safety_many)):
+                items = [item for kind, item in chunk if kind == rubric]
+                if items:
+                    call(items)
+            print(json.dumps({'done': min(i + args.chunk, len(order)), 'of': len(order),
+                              'billed_calls': usage['calls'], 'minutes': round((time.time() - start) / 60, 1)}),
+                  flush=True)
     finally:
         judge.close()
+        llm_client.ChatClient.__init__ = original
         with open(out / 'usage.jsonl', 'a', encoding='utf-8') as stream:
-            stream.write(json.dumps({'warm_cache': args.judge, 'tags': args.tags,
+            stream.write(json.dumps({'warm_cache': args.judge, 'tags': args.tags, 'provider': args.provider,
                                      'usage': {cfg['model']: dict(usage)}}) + '\n')
     return 0
 
