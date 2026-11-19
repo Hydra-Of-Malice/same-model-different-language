@@ -37,6 +37,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 USAGE = defaultdict(lambda: {'calls': 0, 'prompt_tokens': 0, 'completion_tokens': 0})
 LOCK = threading.Lock()
+# Thread count and retry budget for each router client (`--workers`, `--retries`). Neither enters the cache key, so a
+# faster run reuses every verdict already paid for.
+CLIENT_DEFAULTS: dict = {}
 # Judge sets beside the spec's router pair. Kept here, not in the frozen spec: they are an extra comparison, not judges
 # a headline number rests on.
 JUDGE_SETS = {
@@ -75,6 +78,8 @@ def record_usage() -> None:
         return
 
     def __init__(self, *args, **kwargs):
+        for key, value in CLIENT_DEFAULTS.items():
+            kwargs.setdefault(key, value)
         original(self, *args, **kwargs)
         create = self.client.chat.completions.create
 
@@ -192,12 +197,24 @@ def main(argv=None) -> int:
     parser.add_argument('--judge-set', choices=('router', *JUDGE_SETS), default='router',
                         help="router: the spec's 32B pair (default); command-a: the Tiny Aya report's judge, alone, "
                              'written to <run>-command-a-sample/')
+    parser.add_argument('--all', action='store_true',
+                        help='judge every held-out answer of each tag, not a sample, into <run>-<judge set>-full/; '
+                             'the sample folders are left as they are')
+    parser.add_argument('--workers', type=int, help='parallel requests per judge (the client default is 8)')
+    parser.add_argument('--retries', type=int, help='attempts per request before the run stops (the default is 5)')
     args = parser.parse_args(argv)
     if args.judge_set != 'router' and args.write_calibration:
         raise SystemExit("--write-calibration takes the spec's router pair, not --judge-set " + args.judge_set)
+    if args.all and (args.write_calibration or args.pilot):
+        raise SystemExit('--all judges every answer: it takes neither --pilot nor --write-calibration')
+    USAGE.clear()  # one entry per call of main(), not a running total across calls in one process
+    CLIENT_DEFAULTS.clear()
+    CLIENT_DEFAULTS.update({key: value for key, value in (('workers', args.workers), ('max_retries', args.retries))
+                            if value is not None})
     run = args.run.resolve()
-    router_out = run.parent / (run.name + '-router-sample')
-    out = router_out if args.judge_set == 'router' else run.parent / f'{run.name}-{args.judge_set}-sample'
+    suffix = 'full' if args.all else 'sample'
+    router_out = run.parent / f'{run.name}-router-{suffix}'
+    out = router_out if args.judge_set == 'router' else run.parent / f'{run.name}-{args.judge_set}-{suffix}'
     os.environ['LANGSAFE_RUNS_DIR'] = str(out)  # the router cache lives with the sample, not in the run
     os.environ.setdefault('LANGSAFE_SPEC', str(ROOT / 'configs' / 'spec.yaml'))
     from langsafe.config import load_spec
@@ -209,8 +226,8 @@ def main(argv=None) -> int:
     prompts = {prompt.id: prompt for prompt in read_prompts(run / 'data' / 'heldout.jsonl')}
     plan = {}
     for tag in args.tags.split(','):
-        sample = stratified_sample(read_rows(run / 'gens' / f'{tag}.jsonl'), args.per_cell, spec['data']['seed'],
-                                   generation_key)
+        rows = read_rows(run / 'gens' / f'{tag}.jsonl')
+        sample = rows if args.all else stratified_sample(rows, args.per_cell, spec['data']['seed'], generation_key)
         if args.pilot:
             sample = sample[:args.pilot]
         chars = sum(len(prompts[row['id']].text) + min(len(row['response'] or ''), 3000) for row in sample)
@@ -228,7 +245,7 @@ def main(argv=None) -> int:
                 raise SystemExit('No Hugging Face login on this machine; run `hf auth login` yourself first')
             os.environ['HF_TOKEN'] = token
         record_usage()
-        judged = out / 'judged' / f'{tag}.{args.judge_set}-sample.jsonl'
+        judged = out / 'judged' / f'{tag}.{args.judge_set}-{suffix}.jsonl'
         judged.parent.mkdir(parents=True, exist_ok=True)
         judge_generations(sample, prompts, judges, judged, audit_size=0,
                           min_kappa=spec['judging']['min_judge_kappa'], min_ac1=spec['judging']['min_judge_ac1'],
@@ -239,23 +256,24 @@ def main(argv=None) -> int:
         local = [row for row in read_rows(run / 'judged' / f'{tag}.local.jsonl') if (row['id'], row['preamble']) in keys]
         if len(local) != len(sample) or len(router) != len(sample):
             raise SystemExit(f'{tag}: {len(local)} local and {len(router)} router verdicts for {len(sample)} answers')
+        per_cell = 'all' if args.all else args.per_cell
         if args.judge_set == 'router':
-            comparison = {'tag': tag, 'per_cell': args.per_cell, 'pilot': args.pilot or None,
+            comparison = {'tag': tag, 'per_cell': per_cell, 'pilot': args.pilot or None,
                           'refusal_axis': compare_judge_sets(local, router),
                           'content_axis': content_agreement(local, router)}
         else:
-            comparison = {'tag': tag, 'per_cell': args.per_cell, 'pilot': args.pilot or None,
+            comparison = {'tag': tag, 'per_cell': per_cell, 'pilot': args.pilot or None,
                           'judge_set': args.judge_set, 'judges': judges,
                           'note': 'one judge: its own refusal vote is the label; verified is false by design, '
                                   'since the spec calibrates pair against pair',
                           'vs_local_pair': compare_single_judge(local, router, ('local', args.judge_set))}
-            pair_path = router_out / 'judged' / f'{tag}.router-sample.jsonl'  # read only; never written here
+            pair_path = router_out / 'judged' / f'{tag}.router-{suffix}.jsonl'  # read only; never written here
             pair = ([row for row in read_rows(pair_path) if (row['id'], row['preamble']) in keys]
                     if pair_path.is_file() else [])
             comparison['vs_router_pair'] = (compare_single_judge(pair, router, ('router', args.judge_set))
                                             if len(pair) == len(sample) else
                                             {'missing': f'{pair_path.name} has {len(pair)} of these {len(sample)} answers'})
-        target = out / f'{tag}.{args.judge_set}-sample-comparison.json'
+        target = out / f'{tag}.{args.judge_set}-{suffix}-comparison.json'
         target.write_text(json.dumps(comparison, indent=2), encoding='utf-8')
         plan[tag]['comparison'] = str(target)
     if args.write_calibration:
@@ -263,7 +281,11 @@ def main(argv=None) -> int:
             raise SystemExit('A pilot is too small to calibrate with; run the full sample first')
         for tag in args.tags.split(','):
             plan.setdefault(tag, {})['calibration'] = write_calibration(run, out, tag, args.per_cell, args.replace)
-    if args.execute:
+    if args.execute and args.all:  # several --all runs may share the folder: each appends one line, nothing is rewritten
+        entry = {'judge_set': args.judge_set, 'tags': args.tags, 'per_cell': 'all', 'usage': dict(USAGE)}
+        with open(out / 'usage.jsonl', 'a', encoding='utf-8') as stream:
+            stream.write(json.dumps(entry) + '\n')
+    elif args.execute:
         usage_path = out / 'usage.json'
         earlier = json.loads(usage_path.read_text(encoding='utf-8')) if usage_path.is_file() else []
         entry = {'tags': args.tags, 'per_cell': args.per_cell, 'pilot': args.pilot or None, 'usage': dict(USAGE)}

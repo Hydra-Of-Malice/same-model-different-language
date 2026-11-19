@@ -319,3 +319,43 @@ def test_command_a_plan_only_makes_nothing_and_cannot_calibrate(offline_router, 
         module.main(['--run', str(run), '--tags', 'global', '--judge-set', 'command-a', '--write-calibration'])
     with pytest.raises(ValueError, match='one-judge'):
         module.single_judge_view([{'judges': {'a': 'full_refusal', 'b': 'full_refusal'}}])
+
+
+def test_all_judges_every_answer_into_its_own_folder(offline_router, tmp_path, capsys, monkeypatch):
+    import json as _json
+    from langsafe import llm_client
+
+    module = _module()
+    run = _mini_run(tmp_path)
+    sample_out = tmp_path / 'full' / 'earth-router-sample'
+    before = _snapshot(sample_out)
+    seen = []
+    plain = llm_client.ChatClient.__init__
+
+    def spy(self, *args, **kwargs):
+        seen.append((kwargs.get('workers'), kwargs.get('max_retries')))
+        plain(self, *args, **kwargs)
+
+    monkeypatch.setattr(llm_client.ChatClient, '__init__', spy)
+    # 24 answers: 3 prompts x 2 kinds x 2 languages x 2 preambles. --per-cell is ignored.
+    assert module.main(['--run', str(run), '--tags', 'global', '--per-cell', '1', '--all']) == 0
+    assert _printed(capsys)['plan']['global']['answers'] == 24 and offline_router == []
+    assert module.main(['--run', str(run), '--tags', 'global', '--all', '--workers', '16', '--retries', '9',
+                        '--execute']) == 0
+    out = tmp_path / 'full' / 'earth-router-full'
+    assert _printed(capsys)['output'] == str(out)
+    assert len(offline_router) == 4 * 24 // 2 + 2 * 12  # each judge: refusal on 24, content on the 12 harmful
+    assert seen and set(seen) == {(16, 9)}
+    assert _snapshot(sample_out) == before
+    assert sorted(path.name for path in out.iterdir()) == ['global.router-full-comparison.json', 'judged',
+                                                           'llm_cache.sqlite', 'usage.jsonl']
+    assert len((out / 'judged' / 'global.router-full.jsonl').read_text(encoding='utf-8').splitlines()) == 24
+    comparison = _json.loads((out / 'global.router-full-comparison.json').read_text(encoding='utf-8'))
+    assert comparison['per_cell'] == 'all' and comparison['refusal_axis']['shared_rows'] == 24
+    offline_router.clear()
+    assert module.main(['--run', str(run), '--tags', 'global', '--all', '--execute']) == 0  # all from the cache
+    assert offline_router == []
+    lines = (out / 'usage.jsonl').read_text(encoding='utf-8').splitlines()
+    assert len(lines) == 2 and _json.loads(lines[1])['usage'] == {}
+    with pytest.raises(SystemExit, match='--all'):
+        module.main(['--run', str(run), '--tags', 'global', '--all', '--write-calibration'])
