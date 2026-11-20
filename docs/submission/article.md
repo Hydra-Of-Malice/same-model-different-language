@@ -436,7 +436,7 @@ We run {{N_GAP_TESTS}} tests: each language in each preamble condition. With tha
 - **Languages.** We test seven of the report's 10 languages.
 
 **[ALT-A]**
-**Finding.** The gap is confirmed at our setup in {{CONFIRMED_CELLS}}. In the target language, {{TARGET_LANGUAGE}}, {{TARGET_CONDITION}}, Global exceeds Earth by {{TARGET_GAP_POINTS}} points on the content-safe rate ({{TARGET_GAP_CI}}, p = {{TARGET_GAP_P}}, n = {{TARGET_GAP_N}}). {{GAP_LOCATION_SENTENCE}}
+**Finding.** The gap is confirmed at our setup in {{CONFIRMED_CELLS}}. In the target language, {{TARGET_LANGUAGE}}, {{TARGET_CONDITION}}, Global exceeds Earth by {{TARGET_GAP_POINTS}} points on the content-safe rate ({{TARGET_GAP_CI}}, p = {{TARGET_GAP_P}}, n = {{TARGET_GAP_N}}). {{GAP_LOCATION_SENTENCE}} {{JUDGE_SENSITIVITY_SENTENCE}}.
 **[END ALT-A]**
 **[ALT-B]**
 **Finding.** At our setup, the gap was not confirmed. No language passed the test in either preamble condition. The largest gap was {{LARGEST_GAP_POINTS}} points in {{LARGEST_GAP_LANGUAGE}} ({{LARGEST_GAP_CI}}). Our data rule out an Earth deficit above {{GAP_UPPER_BOUND}} points in any single language, at this setup. The repairs in sections 7.6 to 7.8 are therefore exploratory.
@@ -894,6 +894,7 @@ We estimate these steps at {{SCALE_GPU_HOURS}} GPU hours and {{SCALE_JUDGE_COST}
 | `{{TARGET_GAP_P}}` | Exact McNemar p | `report.json`, `gap_confirmation` |
 | `{{TARGET_GAP_N}}` | n in the target language | `report.json`, `gap_confirmation` |
 | `{{GAP_LOCATION_SENTENCE}}` | Whether the confirmed languages sit inside Earth's region | `report.json`, `gap_confirmation` |
+| `{{JUDGE_SENSITIVITY_SENTENCE}}` | Whether the confirmed gaps hold when the 32B pair judges every answer | `docs/judge_checks/full-32b-vs-8b.md` |
 | `{{LARGEST_GAP_POINTS}}` | Largest Global minus Earth gap, points | `report.json`, `gap_confirmation` |
 | `{{LARGEST_GAP_LANGUAGE}}` | Language and condition of that gap | `report.json`, `gap_confirmation` |
 | `{{LARGEST_GAP_CI}}` | 95% CI of that gap | `report.json`, `gap_confirmation` |

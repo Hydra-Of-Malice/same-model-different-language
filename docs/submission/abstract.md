@@ -21,7 +21,9 @@ run.
 Findings:
 
 - Only one gap passed our corrected test: Javanese with the safety preamble. It is almost all broken answers, not
-  harmful content. Both judges called 1 of 176 answers unsafe for each model.
+  harmful content. Both judges called 1 of 176 answers unsafe for each model. It depends on the judges: when the
+  32B pair the specification names judged every answer again, the gap was 9.1 points (p = 0.0195) and missed the
+  bar.
 - Thai, the language the repairs targeted, showed 89.2% safe for Earth and 94.9% for Global (p = 0.0129, against a bar
   of 0.0036). The gap was not confirmed, so every repair result is exploratory.
 - No repair met all pre-set conditions. Merge-back closed 90% of the Thai gap but raised over-refusal and cost
