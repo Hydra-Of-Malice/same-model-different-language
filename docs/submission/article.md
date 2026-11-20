@@ -663,7 +663,7 @@ Everything above ran on {{COMPUTE_SUMMARY}}, with {{CREDITS_SPENT}} of Hugging F
 
 | Step | Now | With more credits | What it would settle | Before | After |
 |---|---|---|---|---|---|
-| Report's judge | {{JUDGE_SET_USED}} judges, and Command A on a 1,680-answer sample | Command A on every answer, in its contextual safety mode | Whether the difference from the report comes from the judge | {{SCALE_JUDGE_BEFORE}} | {{SCALE_JUDGE_AFTER}} |
+| Report's judge | {{JUDGE_SET_USED}} judges, and Command A with our rubric on every Global and Earth answer | Command A on every answer, in its contextual safety mode | Whether the difference from the report comes from the judge | {{SCALE_JUDGE_BEFORE}} | {{SCALE_JUDGE_AFTER}} |
 | Precision | Seven languages at full precision, all 10 only at 4-bit in a pilot | Full-precision run of all 10 MultiJail languages | Whether 4-bit weights move the gap, and whether it sits in a language we left out | {{SCALE_PRECISION_BEFORE}} | To measure |
 | Full prompt set | {{GAP_PROMPTS_NOW}} | All 315 MultiJail items in both preamble conditions | Tighter intervals per language | {{SCALE_PROMPTS_BEFORE}} | To measure |
 | Judge quality | {{HAND_LABELLED_ITEMS}} hand-labelled items | 32B judges on every cell, and paid native reviewers | Judge accuracy per language | {{JUDGE_ACCURACY}}% | To measure |
@@ -732,7 +732,7 @@ We estimate these steps at {{SCALE_GPU_HOURS}} GPU hours and {{SCALE_JUDGE_COST}
 | `{{HELDOUT_MEAN_GLOBAL_DEFAULT}}` | Mean safe rate over seven languages, Global, preamble on, % | `report.json` |
 | `{{GAP_UPPER_BOUND}}` | Largest Earth deficit the data allow: highest upper CI bound across languages and conditions, points | `report.json`, `gap_confirmation` |
 | `{{JUDGE_SET_USED}}` | '32B router' or 'local 8B' | `report.json` |
-| `{{COMMAND_A_SENTENCE}}` | What Command A, the report's judge, said on the 1,680-answer sample | `earth-command-a-sample/*.command-a-sample-comparison.json` |
+| `{{COMMAND_A_SENTENCE}}` | What Command A, the report's judge, said on the 1,680-answer sample and on every Global and Earth answer | `earth-command-a-sample/*.command-a-sample-comparison.json` |
 | `{{ALT_B_SPREAD_SENTENCE}}` | Sentence on how far safety varies by language, only if the numbers show it | `report.json` |
 | `{{THESIS_VERDICT_GAP_SENTENCE}}` | Whether the gap sits in a language Earth targets, as the thesis said | `report.json`, `gap_confirmation` |
 | `{{THESIS_VERDICT_REPAIR_SENTENCE}}` | One sentence on whether the repair half of the thesis held | `report.json` |
