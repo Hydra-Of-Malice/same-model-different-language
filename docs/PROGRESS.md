@@ -53,7 +53,14 @@ Everything except the private run outputs is in this repo or public on Hugging F
     Javanese gap with the preamble is 10.8 points (4.5 to 17.0, p = 0.0013), confirmed; nothing else passes.
     `scripts/single_judge_gap.py` runs the test on one judge's labels and reproduces the frozen report's 8B
     result exactly. Refusal kappa with the 8B pair 0.72 to 0.94, with the 32B pair 0.73 to 0.97; lowest in
-    Bengali. Its contextual safety mode is still untested.
+    Bengali.
+  - **Evening: Command A on the selected repair and Fire, and its safety mode.** 12,926 more calls (26,359 in all,
+    about $49 at list price). The repair closes none of the Thai gap under Command A (its Thai safe rate falls
+    below Earth's; 10% under the 8B pair) and raises no over-refusal, so the repair verdict holds. Fire's
+    Javanese gap with the preamble is 9.1 points (p = 0.0025), which would pass if Fire were a tested model.
+    The router passes Cohere's `safety_mode`; OFF is refused for this model, and setting CONTEXTUAL explicitly
+    changed none of 40 labels while STRICT changed five. So every Command A run, the 12 Nov sample included,
+    was in contextual safety mode, the report's setting. The article's "not its safety mode" is corrected.
   - The article (both copies), abstract, README and mentor brief now say the Javanese gap depends on the judges,
     and that two of the three judge setups confirm it. The
     frozen 8B report stays the reported result. The published Hugging Face post is not yet updated.
