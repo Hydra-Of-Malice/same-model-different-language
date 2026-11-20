@@ -48,7 +48,14 @@ Everything except the private run outputs is in this repo or public on Hugging F
   - One change: the Javanese gap with the preamble is 9.1 points (2.3 to 15.9, p = 0.0195), short of the corrected
     bar of 0.0036, so no gap is confirmed under the 32B pair. Thai is 6.2 (p = 0.0127), Bengali 5.7 (p = 0.099). The
     32B pair leaves fewer answers `unclear` in Bengali and Swahili, which raises the refusal rates there.
-  - The article (both copies), abstract, README and mentor brief now say the Javanese gap depends on the judges. The
+  - **Afternoon: Command A, the report's own judge, confirms the Javanese gap.** It judged every Global and Earth
+    answer alone, with our rubric (13,433 calls, about $25 at list price). Under the same corrected test the
+    Javanese gap with the preamble is 10.8 points (4.5 to 17.0, p = 0.0013), confirmed; nothing else passes.
+    `scripts/single_judge_gap.py` runs the test on one judge's labels and reproduces the frozen report's 8B
+    result exactly. Refusal kappa with the 8B pair 0.72 to 0.94, with the 32B pair 0.73 to 0.97; lowest in
+    Bengali. Its contextual safety mode is still untested.
+  - The article (both copies), abstract, README and mentor brief now say the Javanese gap depends on the judges,
+    and that two of the three judge setups confirm it. The
     frozen 8B report stays the reported result. The published Hugging Face post is not yet updated.
   - Cost: about 50,000 Qwen3-32B calls (pinned to deepinfra) and 92,000 Aya Expanse 32B calls
     (`docs/judge_checks/full/usage.json`). The billing page showed $25.20 of inference for the period on 20 Nov.

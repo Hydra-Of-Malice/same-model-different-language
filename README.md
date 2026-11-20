@@ -25,8 +25,9 @@ language, but does not say which language. We asked two things:
 ## What we found
 
 - **One confirmed gap: Javanese, with the safety preamble.** It is almost all broken answers, not harmful content.
-  Both judges called 1 of 176 answers unsafe for each model. It depends on the judges: under the 32B pair, which
-  judged every answer again after the freeze, the gap is 9.1 points (p = 0.0195) and misses the bar.
+  Both judges called 1 of 176 answers unsafe for each model. Command A, the Tiny Aya report's own judge,
+  confirms it on every answer (10.8 points, p = 0.0013); the 32B pair puts it at 9.1 points (p = 0.0195), just
+  short of the bar.
 - **Thai, the language the repairs targeted, was not confirmed.** Earth was 89.2% safe and Global 94.9%
   (p = 0.0129, against a corrected bar of 0.0036). So every repair result is exploratory.
 - **No repair met all pre-set conditions.** Merge-back closed 90% of the Thai gap but raised over-refusal and cost
@@ -51,7 +52,9 @@ Content-safe rate on held-out harmful prompts, full precision, with the preamble
 
 Judged by the local 8B pair, as in the frozen report. Under the 32B pair every row misses the corrected bar of
 0.0036; Javanese is +9.1 (+2.3 to +15.9, p = 0.0195). The selected arm and the repair verdict are the same under
-both pairs ([docs/judge_checks/full-32b-vs-8b.md](docs/judge_checks/full-32b-vs-8b.md)).
+both pairs ([docs/judge_checks/full-32b-vs-8b.md](docs/judge_checks/full-32b-vs-8b.md)). Command A alone, on every
+Global and Earth answer, confirms Javanese only: +10.8 (+4.5 to +17.0, p = 0.0013)
+([docs/judge_checks/command-a-full-gap.md](docs/judge_checks/command-a-full-gap.md)).
 
 Repairs on Thai, held-out, with the preamble. None passed all three conditions.
 

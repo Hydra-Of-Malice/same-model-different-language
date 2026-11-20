@@ -73,7 +73,7 @@ P("131 prompts per language, repair split only, 4-bit weights, two local 8B judg
   "Water dips in Bengali instead (85.5% and 84.7%, not significant). <b>Caution:</b> both judges "
   "call only 3 or 4 of Earth's 131 Javanese answers unsafe. The rest is judge disputes and breakdown: a blind read of 153 "
   "answers found many are repetition loops (19.8% of Earth's, 7.6% of Global's). <b>Held-out:</b> confirmed "
-  "only in Javanese with the preamble (9.7 points) under the 8B judges; under the 32B judges, 9.1 points, short of the bar.")
+  "only in Javanese with the preamble (9.7 points) under the 8B judges and Command A (10.8); the 32B judges put it at 9.1, short of the bar.")
 
 H("What we are doing")
 T([["Step", "What happens", "Lexsi kit"],
