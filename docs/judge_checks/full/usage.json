@@ -1,0 +1,16 @@
+{
+  "what": "Billed router calls for the full 32B judging of every held-out answer, 19-20 Nov. The cache-only --all passes billed nothing.",
+  "note": "Qwen3-32B was pinned to the deepinfra provider. Calls billed on 19 Nov before this log was kept (including Qwen3-32B calls sent through a far dearer automatic route) are not counted here.",
+  "by_model": {
+    "Qwen/Qwen3-32B": {
+      "calls": 50205,
+      "prompt_tokens": 28157028,
+      "completion_tokens": 1590224
+    },
+    "CohereLabs/aya-expanse-32b": {
+      "calls": 91772,
+      "prompt_tokens": 55846482,
+      "completion_tokens": 3236790
+    }
+  }
+}
