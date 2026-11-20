@@ -23,7 +23,7 @@ Everything except the private run outputs is in this repo or public on Hugging F
 | Public data, circuit detail and models | https://huggingface.co/datasets/HydraOfMalice/tiny-aya-earth-langsafe-eval and the [checkpoints collection](https://huggingface.co/collections/HydraOfMalice/same-model-different-language-repair-checkpoints-6af426d1cac578d29e4805e5) |
 | Demo Space, not deployed | `space/`. Run it with `pip install -r space/requirements.txt`, then `python space/app.py` |
 | Six kit PRs, open since 13 Nov | SafeTune#86, #87; AuditKIT#47, #48; CuratorKIT#53; CircuitKIT#48. Patches and PR texts in `docs/upstream_patches/` |
-| Judge checks (32B on 4-bit, Command A) | `docs/judge_checks/`, aggregates only |
+| Judge checks (32B on every answer, 32B on 4-bit, Command A) | `docs/judge_checks/`, aggregates only. `full-32b-vs-8b.md` sets the 32B report beside the frozen one |
 | Run outputs: answers, verdicts, checkpoints | Aditya's laptop only, under `runs/`. They hold harmful model text, so they never go in git or on a public repo |
 
 ## Still needs a person
@@ -35,6 +35,24 @@ Everything except the private run outputs is in this repo or public on Hugging F
   tokenizer file for its token ratios (D13).
 - **Aditya:** check the billing page (D14), send the mentor one-pager (D15), the organiser ticket (D16), review and
   deploy the Space (D10), and submit the form (D17).
+
+## 20 November 2026
+- **Morning** **The 32B pair has judged every held-out answer, and the Javanese gap no longer passes under it.**
+  - Aya Expanse 32B and Qwen3-32B, the pair the spec names, judged all 4,528 answers of all 18 models (the 16 report
+    models, Fire and Water). Their verdicts went into a judge cache first (`scripts/warm_judge_cache.py`), then
+    `scripts/router_sample.py --all --cache-only` judged each model from the cache without billing.
+    `scripts/router_report.py` built the report again on those verdicts, and `scripts/compare_reports.py` set it
+    beside the frozen one (`docs/judge_checks/full-32b-vs-8b.md`).
+  - Agreement with the 8B pair: refusal kappa 0.89 to 0.99 per language and model, content agreement 97.6% to 100%.
+  - Same verdicts: acceptance candidate earth-circuit_merge-0p5, repair success not shown, no validation gaps.
+  - One change: the Javanese gap with the preamble is 9.1 points (2.3 to 15.9, p = 0.0195), short of the corrected
+    bar of 0.0036, so no gap is confirmed under the 32B pair. Thai is 6.2 (p = 0.0127), Bengali 5.7 (p = 0.099). The
+    32B pair leaves fewer answers `unclear` in Bengali and Swahili, which raises the refusal rates there.
+  - The article (both copies), abstract, README and mentor brief now say the Javanese gap depends on the judges. The
+    frozen 8B report stays the reported result. The published Hugging Face post is not yet updated.
+  - Cost: about 50,000 Qwen3-32B calls (pinned to deepinfra) and 92,000 Aya Expanse 32B calls
+    (`docs/judge_checks/full/usage.json`). The billing page showed $25.20 of inference for the period on 20 Nov.
+    Pin a provider for Qwen3-32B: the router's automatic choice cost over ten times as much on 19 Nov.
 
 ## 13 November 2026
 - **Evening** **Ready to submit, apart from making the repo public.**
