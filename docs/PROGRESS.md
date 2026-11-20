@@ -61,6 +61,10 @@ Everything except the private run outputs is in this repo or public on Hugging F
     The router passes Cohere's `safety_mode`; OFF is refused for this model, and setting CONTEXTUAL explicitly
     changed none of 40 labels while STRICT changed five. So every Command A run, the 12 Nov sample included,
     was in contextual safety mode, the report's setting. The article's "not its safety mode" is corrected.
+  - **Night: Command A on Water.** 6,531 more calls (32,890 in all, about $61 at list price). Water shows no
+    Javanese gap (-0.6 points with the preamble) and no gap that would pass; its Bengali gap is 3.4 points
+    (p = 0.24), against about 10 on both judge pairs, which fits the judges splitting on those answers.
+    Refusal kappa with the 8B pair 0.70 to 0.93, with the 32B pair 0.72 to 0.97.
   - The article (both copies), abstract, README and mentor brief now say the Javanese gap depends on the judges,
     and that two of the three judge setups confirm it. The
     frozen 8B report stays the reported result. The published Hugging Face post is not yet updated.
