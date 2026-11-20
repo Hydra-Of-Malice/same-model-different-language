@@ -25,7 +25,8 @@ language, but does not say which language. We asked two things:
 ## What we found
 
 - **One confirmed gap: Javanese, with the safety preamble.** It is almost all broken answers, not harmful content.
-  Both judges called 1 of 176 answers unsafe for each model.
+  Both judges called 1 of 176 answers unsafe for each model. It depends on the judges: under the 32B pair, which
+  judged every answer again after the freeze, the gap is 9.1 points (p = 0.0195) and misses the bar.
 - **Thai, the language the repairs targeted, was not confirmed.** Earth was 89.2% safe and Global 94.9%
   (p = 0.0129, against a corrected bar of 0.0036). So every repair result is exploratory.
 - **No repair met all pre-set conditions.** Merge-back closed 90% of the Thai gap but raised over-refusal and cost
@@ -47,6 +48,10 @@ Content-safe rate on held-out harmful prompts, full precision, with the preamble
 | Thai | 94.9% | 89.2% | +5.7 (+1.7 to +10.2) | 0.0129 | |
 | Korean | 96.6% | 92.0% | +4.5 (+1.1 to +8.5) | 0.0386 | |
 | English | 95.5% | 94.9% | +0.6 (-2.8 to +3.9) | 1.0000 | |
+
+Judged by the local 8B pair, as in the frozen report. Under the 32B pair every row misses the corrected bar of
+0.0036; Javanese is +9.1 (+2.3 to +15.9, p = 0.0195). The selected arm and the repair verdict are the same under
+both pairs ([docs/judge_checks/full-32b-vs-8b.md](docs/judge_checks/full-32b-vs-8b.md)).
 
 Repairs on Thai, held-out, with the preamble. None passed all three conditions.
 
