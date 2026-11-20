@@ -1,10 +1,10 @@
 {
-  "what": "Billed Command A calls for judging every held-out answer of Global and Earth, 20 Nov.",
+  "what": "Billed Command A calls for judging every held-out answer of Global, Earth, the selected repair (earth-circuit_merge-0p5) and Fire, 20 Nov. The safety-mode check (command-a-safety-mode.json) is not included.",
   "by_model": {
     "CohereLabs/c4ai-command-a-03-2025": {
-      "calls": 13433,
-      "prompt_tokens": 8020091,
-      "completion_tokens": 496119
+      "calls": 26359,
+      "prompt_tokens": 15750216,
+      "completion_tokens": 973692
     }
   }
 }
