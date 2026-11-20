@@ -1,0 +1,137 @@
+{
+  "tag": "global-nf4",
+  "per_cell": "all",
+  "pilot": null,
+  "refusal_axis": {
+    "verified": true,
+    "shared_rows": 4528,
+    "by_lang": {
+      "ar": {
+        "n": 489,
+        "shared": 644,
+        "excluded_unclear": 155,
+        "agreement": 0.9713701431492843,
+        "kappa": 0.9374400307042795,
+        "all_label_agreement": 0.8074534161490683,
+        "all_label_kappa": 0.6747130276096361
+      },
+      "bn": {
+        "n": 477,
+        "shared": 650,
+        "excluded_unclear": 173,
+        "agreement": 0.9790356394129979,
+        "kappa": 0.9523847551358581,
+        "all_label_agreement": 0.7723076923076924,
+        "all_label_kappa": 0.6147191695235655
+      },
+      "en": {
+        "n": 519,
+        "shared": 662,
+        "excluded_unclear": 143,
+        "agreement": 0.9749518304431599,
+        "kappa": 0.9490049657236579,
+        "all_label_agreement": 0.8293051359516617,
+        "all_label_kappa": 0.7189519401280394
+      },
+      "jv": {
+        "n": 462,
+        "shared": 646,
+        "excluded_unclear": 184,
+        "agreement": 0.9826839826839827,
+        "kappa": 0.9573229873908827,
+        "all_label_agreement": 0.7987616099071208,
+        "all_label_kappa": 0.6537249921657238
+      },
+      "ko": {
+        "n": 473,
+        "shared": 646,
+        "excluded_unclear": 173,
+        "agreement": 0.9746300211416491,
+        "kappa": 0.9480457665903891,
+        "all_label_agreement": 0.7987616099071208,
+        "all_label_kappa": 0.6764325124063744
+      },
+      "sw": {
+        "n": 352,
+        "shared": 644,
+        "excluded_unclear": 292,
+        "agreement": 0.9886363636363636,
+        "kappa": 0.9697581511233301,
+        "all_label_agreement": 0.5822981366459627,
+        "all_label_kappa": 0.3701035913359974
+      },
+      "th": {
+        "n": 508,
+        "shared": 636,
+        "excluded_unclear": 128,
+        "agreement": 0.9803149606299213,
+        "kappa": 0.9611436613685387,
+        "all_label_agreement": 0.8286163522012578,
+        "all_label_kappa": 0.7191393162012258
+      }
+    },
+    "local_evaluation_digest": "1bc51c3284b195568816a3e625955cd78deac0fbf0f9073f646cfee4a5fa621a",
+    "router_evaluation_digest": "aac9bcedc83e65ff6c692e59911d3a16a619e96404f9ec4e06956dd998ab42ba"
+  },
+  "content_axis": {
+    "shared_rows": 4528,
+    "by_lang": {
+      "ar": {
+        "shared": 644,
+        "decided_by_both": 312,
+        "agreement": 0.9839743589743589,
+        "ac1": 0.9835349684024434,
+        "local_safe": 306,
+        "router_safe": 301
+      },
+      "bn": {
+        "shared": 650,
+        "decided_by_both": 297,
+        "agreement": 0.9865319865319865,
+        "ac1": 0.9863500051704526,
+        "local_safe": 295,
+        "router_safe": 291
+      },
+      "en": {
+        "shared": 662,
+        "decided_by_both": 311,
+        "agreement": 0.9903536977491961,
+        "ac1": 0.9900064802566396,
+        "local_safe": 307,
+        "router_safe": 304
+      },
+      "jv": {
+        "shared": 646,
+        "decided_by_both": 312,
+        "agreement": 0.9903846153846154,
+        "ac1": 0.9894809890792213,
+        "local_safe": 283,
+        "router_safe": 282
+      },
+      "ko": {
+        "shared": 646,
+        "decided_by_both": 324,
+        "agreement": 0.9814814814814815,
+        "ac1": 0.9809011062425088,
+        "local_safe": 322,
+        "router_safe": 316
+      },
+      "sw": {
+        "shared": 644,
+        "decided_by_both": 333,
+        "agreement": 0.996996996996997,
+        "ac1": 0.9969292977728187,
+        "local_safe": 325,
+        "router_safe": 326
+      },
+      "th": {
+        "shared": 636,
+        "decided_by_both": 332,
+        "agreement": 1.0,
+        "ac1": 1.0,
+        "local_safe": 323,
+        "router_safe": 323
+      }
+    }
+  }
+}
