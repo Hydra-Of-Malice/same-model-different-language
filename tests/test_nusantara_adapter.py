@@ -13,7 +13,10 @@ from nusantara_adapter import (
     LANGUAGES,
     LEVELS,
     Example,
+    back_translation,
     build,
+    family,
+    new_tokens,
     choice_cell,
     collate,
     encode,
@@ -279,3 +282,32 @@ def test_response_loss_matches_the_usual_loss_without_prompt_logits():
                                                  ignore_index=-100)
     assert loss.item() == pytest.approx(expected.item(), rel=1e-6)
     assert lm.calls[0] == (5, 6)
+
+
+def test_composite_selection_counts_each_task_family_once():
+    cells = {"ind_to_jav": {"after": {"chrf_pp": 60.0}}, "jav_to_ind": {"after": {"chrf_pp": 70.0}},
+             "ind_to_jav_tweets": {"after": {"chrf_pp": 50.0}}, "ind_to_krama": {"after": {"chrf_pp": 40.0}},
+             "ind_to_ngoko_alus": {"after": {"chrf_pp": 60.0}}, "ngoko_to_krama": {"after": {"chrf_pp": 80.0}},
+             "level_jav": {"after": {"accuracy": 90.0}}, "senti_jav": {"after": {"accuracy": 100.0}}}
+    assert [family(key) for key in cells] == ["translation", "translation", "tweets", "level_translation",
+                                              "level_translation", "rewriting", "level", "senti"]
+    assert family("ind_to_sun") == "other_translation" and family("triage_jav") == "triage"
+    assert family("ind_to_jav_paragraphs") == "paragraphs"
+    assert selection_score(cells, mode="composite") == pytest.approx((65 + 50 + 50 + 80 + 90 + 100) / 6)
+    assert selection_score(cells) == 65.0
+
+
+def test_back_translation_keeps_native_javanese_as_the_target_and_drops_bad_sources():
+    native = "Aku seneng banget mangan sega goreng saben esuk."
+    pairs = [(native, ("Saya sangat suka makan nasi goreng setiap pagi.", False)),
+             (native, ("Saya sangat suka makan nasi goreng setiap", True)),
+             (native, (native.upper(), False)),
+             (native, ("Suka.", False)),
+             (native, ("   ", False))]
+    examples, stats = back_translation(pairs)
+    assert stats == {"paragraphs": 5, "kept": 1, "dropped": {"cut_off": 1, "copied": 1, "length": 1, "empty": 1}}
+    (example,) = examples
+    assert example.key == "ind_to_jav_paragraphs" and example.reference == native
+    assert example.source == "Saya sangat suka makan nasi goreng setiap pagi."
+    assert example.prompt.startswith("Translate the following Indonesian text into Javanese.")
+    assert new_tokens(example) == 512 and new_tokens(Example("senti_jav", "1", "p", "positive", "s", LABELS)) == 8

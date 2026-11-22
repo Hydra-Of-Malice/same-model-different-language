@@ -83,8 +83,8 @@ EMOTIONS = ("happy", "sad", "angry", "fear", "surprise", "disgusted", "shame")
 CORE = ("ind_to_jav", "jav_to_ind")
 CONTROL = "eng_to_ind"
 SEED = 20261122
-MAX_LENGTH = 1024
-NEW_TOKENS = {"text": 256, "choice": 8}
+MAX_LENGTH = 1280
+NEW_TOKENS = {"text": 256, "choice": 8, "paragraph": 512}
 
 
 @dataclass(frozen=True)
@@ -414,23 +414,28 @@ def schedule(step: int, total: int, warmup: int) -> float:
     return 0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * min(1.0, progress)))
 
 
-def generate(model, tokenizer, examples: list[Example], batch_size: int) -> list[tuple[str, bool]]:
+def new_tokens(example: Example) -> int:
+    return NEW_TOKENS["paragraph" if example.key.endswith("_paragraphs") else example.task]
+
+
+def generate(model, tokenizer, examples: list[Example], batch_size: int, num_beams: int = 1) -> list[tuple[str, bool]]:
     import torch
 
+    batch_size = max(1, batch_size // num_beams)
     model.eval()
     eos = model.generation_config.eos_token_id
     eos_ids = set(eos if isinstance(eos, list) else [eos])
     prompts = [chat_prefix(tokenizer, example.prompt) for example in examples]
-    order = sorted(range(len(examples)), key=lambda i: (NEW_TOKENS[examples[i].task], -len(prompts[i])))
+    order = sorted(range(len(examples)), key=lambda i: (new_tokens(examples[i]), -len(prompts[i])))
     outputs: list[tuple[str, bool] | None] = [None] * len(examples)
     with torch.inference_mode():
         start = 0
         while start < len(order):
-            limit = NEW_TOKENS[examples[order[start]].task]
-            group = [i for i in order[start:start + batch_size] if NEW_TOKENS[examples[i].task] == limit]
+            limit = new_tokens(examples[order[start]])
+            group = [i for i in order[start:start + batch_size] if new_tokens(examples[i]) == limit]
             tokens = tokenizer([prompts[i] for i in group], padding=True, return_tensors="pt",
                                add_special_tokens=False).to(model.device)
-            result = model.generate(**tokens, max_new_tokens=limit, do_sample=False,
+            result = model.generate(**tokens, max_new_tokens=limit, do_sample=False, num_beams=num_beams,
                                     pad_token_id=tokenizer.pad_token_id, use_cache=True)
             for i, ids in zip(group, result[:, tokens.input_ids.shape[1]:].tolist()):
                 reached_limit = len(ids) == limit and not (eos_ids & set(ids))
@@ -589,12 +594,54 @@ def headline(arm: dict) -> float:
     raise KeyError("Cell has no headline metric")
 
 
-def selection_score(cells: dict, arm: str = "after") -> float:
-    """Mean validation chrF++ over the Javanese directions, or over every translation key without them."""
+def family(key: str) -> str:
+    """The task family a key belongs to. Each family counts once in the composite validation score."""
+    if key in CORE:
+        return "translation"
+    if key.endswith(("_tweets", "_paragraphs")):
+        return key.rsplit("_", 1)[1]
+    if key in {"ngoko_to_krama", "krama_to_ngoko"}:
+        return "rewriting"
+    if key.startswith("ind_to_") and key.removeprefix("ind_to_") in {"ngoko", "ngoko_alus", "krama", "krama_alus"}:
+        return "level_translation"
+    return "other_translation" if "_to_" in key else key.split("_")[0]
+
+
+def selection_score(cells: dict, arm: str = "after", mode: str = "javanese") -> float:
+    """Validation score that picks the epoch.
+
+    `javanese`: mean chrF++ over the two Indonesian-Javanese directions, or over every translation key without them.
+    `composite`: mean over task families of each family's mean headline metric, so no family outweighs another.
+    """
+    if mode == "composite":
+        families: dict[str, list[float]] = {}
+        for key, cell in cells.items():
+            families.setdefault(family(key), []).append(headline(cell[arm]))
+        return sum(sum(values) / len(values) for values in families.values()) / len(families)
     keys = [key for key in CORE if key in cells] or [key for key in cells if "_to_" in key]
     if not keys:
         raise ValueError("Checkpoint selection needs at least one translation key")
     return sum(cells[key][arm]["chrf_pp"] for key in keys) / len(keys)
+
+
+def back_translation(pairs: list[tuple[str, tuple[str, bool]]]) -> tuple[list[Example], dict]:
+    """Training examples from machine-translated Indonesian to the native Javanese paragraph it came from.
+
+    The synthetic side is only ever the source, so the model never learns to write machine Javanese. Translations that
+    hit the length limit, copy the paragraph or change its length by more than half are dropped.
+    """
+    examples, dropped = [], Counter()
+    for index, (paragraph, (synthetic, cut)) in enumerate(pairs):
+        ratio = len(synthetic) / len(paragraph)
+        reason = ("cut_off" if cut else "empty" if not normalize(synthetic) else "copied"
+                  if normalize(synthetic) == normalize(paragraph) else "length" if not 0.5 <= ratio <= 1.5 else None)
+        if reason:
+            dropped[reason] += 1
+            continue
+        example = translation({"id": f"b:{index}", "ind": synthetic.strip(), "jav": paragraph}, "ind", "jav")
+        examples.append(Example("ind_to_jav_paragraphs", example.row_id, example.prompt, example.reference,
+                                example.source))
+    return examples, {"paragraphs": len(pairs), "kept": len(examples), "dropped": dict(dropped)}
 
 
 def main() -> None:
@@ -619,6 +666,15 @@ def main() -> None:
     parser.add_argument("--base", default=BASE, help="Starting checkpoint on the Hub")
     parser.add_argument("--base-revision", default=BASE_REVISION, help="Full Hub commit hash of that checkpoint")
     parser.add_argument("--epochs", type=int, default=3)
+    parser.add_argument("--select", choices=("javanese", "composite"), default="javanese",
+                        help="Validation score that picks the epoch: Indonesian-Javanese chrF++, or the mean over "
+                             "task families")
+    parser.add_argument("--repeat-javanese", type=int, default=1,
+                        help="Times each non-regional training example is used per epoch, to balance --regional")
+    parser.add_argument("--back-translate", metavar="REPO@SHA:PATH",
+                        help="Translate the NusaParagraph training paragraphs into Indonesian with this adapter and "
+                             "train on the result as Indonesian-to-Javanese paragraphs. Needs --paragraphs")
+    parser.add_argument("--num-beams", type=int, default=1, help="Also score the adapter with this many beams")
     parser.add_argument("--rank", type=int, default=64)
     parser.add_argument("--alpha", type=int, help="LoRA alpha. Defaults to twice the rank")
     parser.add_argument("--dropout", type=float, default=0.05)
@@ -657,6 +713,11 @@ def main() -> None:
         parser.error("--compare-adapter requires REPO@SHA with a full Hub commit hash")
     if not re.fullmatch(r"[0-9a-f]{40}", args.base_revision):
         parser.error("--base-revision must be a full Hub commit hash")
+    helper = re.fullmatch(r"([^@:]+)@([0-9a-f]{40}):(.+)", args.back_translate or "")
+    if args.back_translate and not (helper and args.paragraphs):
+        parser.error("--back-translate takes REPO@SHA:PATH with a full Hub commit hash, and needs --paragraphs")
+    if min(args.repeat_javanese, args.num_beams) < 1:
+        parser.error("--repeat-javanese and --num-beams must be positive")
     if args.compare_adapter and (args.base, args.base_revision) != (BASE, BASE_REVISION):
         parser.error("--compare-adapter only fits the default checkpoint, which the earlier adapters were trained on")
 
@@ -730,6 +791,9 @@ def main() -> None:
                                for text in (example.source, example.reference)})
         dropped["train_examples_dropped_for_nusa_writes_overlap"] = before - len(train)
         train, valid, test = train + kept, valid + extra_valid, test + extra_test
+    if args.repeat_javanese > 1:
+        train = [example for example in train
+                 for _ in range(1 if set(example.key.split("_")) & set(REGIONAL) else args.repeat_javanese)]
     provenance = {
         "source": DATA_URL, "revision": DATA_REVISION, "sha256": hashes, **dropped,
         "train_rows": len(train_rows), "valid_rows": len(valid_rows), "test_rows": len(test_rows),
@@ -771,6 +835,27 @@ def main() -> None:
     model = AutoModelForCausalLM.from_pretrained(args.base, revision=args.base_revision, dtype=dtype,
                                                 device_map={"": 0 if args.device == "cuda" else "mps"},
                                                 attn_implementation="sdpa")
+    if helper:
+        from peft import PeftModel
+
+        repo, revision, folder = helper.groups()
+        files = [hf_hub_download(repo, f"{folder.strip('/')}/{name}", revision=revision)
+                 for name in ("adapter_config.json", "adapter_model.safetensors")]
+        paragraphs = list(dict.fromkeys(example.source for example in train
+                                        if example.key in {"topic_jav", "emotion_jav"}))
+        requests = [Example("jav_to_ind_paragraphs", str(index), translation({"id": "0", "jav": text, "ind": ""},
+                                                                             "jav", "ind").prompt, "", text)
+                    for index, text in enumerate(paragraphs)]
+        translator = PeftModel.from_pretrained(model, str(Path(files[0]).parent))
+        print(f"Translating {len(requests)} Javanese paragraphs into Indonesian with {repo}/{folder}.", flush=True)
+        synthetic, provenance["back_translation"] = back_translation(
+            list(zip(paragraphs, generate(translator, tokenizer, requests, args.batch_size))))
+        provenance["back_translation"]["adapter"] = args.back_translate
+        model = translator.unload()
+        del translator
+        train += synthetic
+        provenance["train_examples"] = dict(Counter(example.key for example in train))
+        print(json.dumps({"back_translation": provenance["back_translation"]}), flush=True)
     modules = ["q_proj", "v_proj"] if args.modules == "attention" else [
         "q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
     alpha = args.alpha or 2 * args.rank
@@ -838,7 +923,7 @@ def main() -> None:
                     print(f"Epoch {epoch + 1}, step {step}/{total_steps}, mean response loss "
                           f"{sum(recent) / len(recent):.4f}", flush=True)
         cells = evaluate(valid, {"after": generate(model, tokenizer, valid, args.batch_size)})
-        score = selection_score(cells)
+        score = selection_score(cells, mode=args.select)
         history.append({"epoch": epoch + 1, "mean_response_loss": sum(losses) / len(losses),
                         "minutes": (time.monotonic() - started) / 60,
                         "peak_gpu_gib": torch.cuda.max_memory_allocated() / 2 ** 30 if args.device == "cuda" else None,
@@ -880,6 +965,8 @@ def main() -> None:
     arms = {"after": generate(model, tokenizer, test, args.batch_size)}
     with model.disable_adapter():
         arms["before"] = generate(model, tokenizer, test, args.batch_size)
+    if args.num_beams > 1:
+        arms[f"beam_{args.num_beams}"] = generate(model, tokenizer, test, args.batch_size, args.num_beams)
     for scale in scales:   # a weaker adapter trades task gain for closeness to the parent, with no further training
         with rescale_adapter_scale(model, scale):
             arms[f"scale_{scale:g}"] = generate(model, tokenizer, test, args.batch_size)
@@ -904,7 +991,8 @@ def main() -> None:
                     "peak_gpu_gib": torch.cuda.max_memory_allocated() / 2 ** 30 if args.device == "cuda" else None,
                     "dependencies": {name: importlib.metadata.version(name)
                                      for name in ("torch", "transformers", "accelerate", "peft", "sacrebleu")}},
-        "training": {"epochs": args.epochs, "selected_epoch": best[1], "optimizer_steps": total_steps,
+        "training": {"epochs": args.epochs, "selected_epoch": best[1], "selected_by": args.select,
+                     "repeat_javanese": args.repeat_javanese, "optimizer_steps": total_steps,
                      "examples": len(encoded), "skipped_too_long": dict(too_long), "rank": args.rank, "alpha": alpha,
                      "rslora": args.rslora, "dropout": args.dropout, "target_modules": modules,
                      "learning_rate": args.learning_rate, "weight_decay": args.weight_decay,
