@@ -56,6 +56,18 @@ The follow-up trained a fresh adapter from the same checkpoint and replaced 64 o
 
 The first adapter had the largest Javanese gains on both holdout samples. On the second sample it scored 9.54 and 8.06 corpus points above the parent in the two Javanese directions. The corresponding mean sentence changes were +10.56 [8.70, 12.60] and +8.87 [6.63, 11.17]. Adding English examples gained just 0.12 corpus points on the control versus the first adapter, with a mean sentence change of +0.25 [−0.99, 1.49]. The English-mix adapter lost 2.47 and 1.94 corpus points in the Javanese directions versus the first adapter. It also produced six avoidable Javanese source echoes versus three from the first adapter and one from the parent. Use the first adapter for further offline Javanese translation evaluation. Check native translation quality and safety regressions before drawing broader conclusions. [Private aggregate metrics](https://huggingface.co/PDGamerSG/tiny-aya-javanese-translation-pilot-v2/blob/271039d85b82f83a89ff3eaae63849a9f3bd8c74/pilot_metrics.json)
 
+## Local checkpoint verification
+
+The 6.7 GB parent checkpoint was downloaded with fixed byte ranges, assembled at the expected size, and loaded locally through Transformers on Apple MPS. The private first adapter attached through PEFT. A four-row smoke sample per direction reproduced the cloud result directionally:
+
+| Direction | Parent chrF++ | Adapter chrF++ | Change |
+|---|---:|---:|---:|
+| Indonesian → Javanese | 52.53 | 64.41 | +11.88 |
+| Javanese → Indonesian | 52.48 | 67.50 | +15.02 |
+| English → Indonesian control | 50.65 | 50.09 | −0.56 |
+
+The local MPS runtime became memory-bound during an attempted 120-row, 360-pair pass and that pass was stopped. The full held-out comparison remains the completed A10G result above. The local checkpoint is retained under the ignored cache/huggingface/ directory for another run on a CUDA host or with a smaller MPS sample.
+
 ## Reproduction
 
 Run the split check without a GPU:
