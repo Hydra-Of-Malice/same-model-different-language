@@ -179,6 +179,23 @@ hf jobs uv run --flavor l40sx1 --timeout 3h --secrets HF_TOKEN --detach --name s
 
 The token needs permission to call Inference Providers, since the judges run on the router. Add `--limit 4` for a ten-minute trial of the whole path.
 
+### Using a trained adapter
+
+[`scripts/javanese_tools.py`](../scripts/javanese_tools.py) runs one request through a checkpoint and an adapter on CUDA, Apple MPS or CPU. It builds each prompt with the training functions, so the wording matches what the adapter saw. Export a token that can read the private repository first, for example `export HF_TOKEN="$(hf auth token)"`.
+
+```bash
+python scripts/javanese_tools.py --adapter "$HF_ADAPTER_REPO" --adapter-path suite-r64 \
+  translate --source ind --target jav --level krama "Kamu makan apa hari ini?"
+```
+
+The other commands are `level`, `rewrite --level krama`, `sentiment`, `triage`, `identify --among ind,jav,sun`, `topic` and `emotion`. `--show-prompt` prints the prompt without loading weights. Leave `--adapter` out to see the parent's answer.
+
+Compare runs as Markdown tables, from aggregates only:
+
+```bash
+python scripts/adapter_report.py core-r64 suite-r64 --repo "$HF_ADAPTER_REPO"
+```
+
 ## Source search log
 
 **22 November 2026, second pass.** Three wider searches covered use cases and datasets, fine-tuning recipes for Tiny Aya and other small models, and this repository's own evaluation path. Dataset sizes, licences and file layouts were read from the Hub API, dataset cards and the pinned files. Gated sets (FLORES+, BOUQuET, SEA-HELM) were listed but not opened. Paper figures were read from HTML renderings and have not been re-derived. The Hub listing of models built on Tiny Aya showed 388 derived models on that date.
