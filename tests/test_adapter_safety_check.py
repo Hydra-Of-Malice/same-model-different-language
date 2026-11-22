@@ -6,7 +6,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from adapter_safety_check import capability_change, filter_prompts, pin_provider, safety_gates, split_by_preamble
+from adapter_safety_check import (capability_change, filter_prompts, pin_provider, safety_gates, scaled,
+                                  split_by_preamble)
 
 from langsafe.config import load_spec
 from langsafe.eval.stats import mcnemar_exact, paired_diff_ci
@@ -54,3 +55,9 @@ def test_capability_change_is_paired_per_language():
     assert change["id"]["delta"] == -0.25 and change["id"]["drop_within_limit"] is False
     assert change["en"]["delta"] == 0.5 and change["en"]["drop_within_limit"] is True
     assert change["id"]["n"] == 4 and change["id"]["parent"] == 0.75 and change["id"]["adapter"] == 0.5
+
+
+def test_scaling_an_adapter_touches_only_the_b_matrices():
+    tensors = {"layers.0.q_proj.lora_A.weight": 2.0, "layers.0.q_proj.lora_B.weight": 4.0, "other": 3.0}
+    assert scaled(tensors, 0.5) == {"layers.0.q_proj.lora_A.weight": 2.0, "layers.0.q_proj.lora_B.weight": 2.0,
+                                    "other": 3.0}

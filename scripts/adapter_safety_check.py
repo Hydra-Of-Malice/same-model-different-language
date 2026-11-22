@@ -10,6 +10,7 @@
 #   "numpy>=1.26",
 #   "openai>=1.40",
 #   "pyyaml>=6",
+#   "safetensors>=0.4",
 #   "tqdm>=4.66",
 # ]
 # ///
@@ -97,6 +98,11 @@ def capability_change(parent: dict, adapter: dict, drop_max: float, paired_diff_
     return result
 
 
+def scaled(tensors: dict, strength: float) -> dict:
+    """Adapter weights at reduced strength. A LoRA update is B·A, so scaling every B scales the whole update."""
+    return {name: tensor * strength if ".lora_B." in name else tensor for name, tensor in tensors.items()}
+
+
 def fetch_code(revision: str, directory: Path) -> Path:
     with urlopen(f"https://github.com/{CODE}/archive/{revision}.tar.gz", timeout=120) as response:
         archive = tarfile.open(fileobj=io.BytesIO(response.read()), mode="r:gz")
@@ -123,6 +129,8 @@ def main() -> None:
     parser.add_argument("--adapter-repo", required=True, help="Hugging Face model repository holding the adapter")
     parser.add_argument("--adapter-revision", required=True, help="Full Hub commit hash of that repository")
     parser.add_argument("--adapter-path", default="", help="Folder of the adapter inside the repository")
+    parser.add_argument("--adapter-scale", type=float, default=1.0,
+                        help="Check the adapter at this strength, between 0 and 1")
     parser.add_argument("--languages", default="jv,en", help="Safety languages from the held-out prompts")
     parser.add_argument("--capability-languages", default="id,en", help="Global-MMLU-Lite languages")
     parser.add_argument("--limit", type=int, help="Prompts per language and kind, for a small check")
@@ -135,6 +143,8 @@ def main() -> None:
     for name in ("adapter_revision", "code_revision", "base_revision"):
         if not re.fullmatch(r"[0-9a-f]{40}", getattr(args, name)):
             parser.error(f"--{name.replace('_', '-')} must be a full commit hash")
+    if not 0 < args.adapter_scale <= 1:
+        parser.error("--adapter-scale must be above 0 and at most 1")
     if args.work.exists():
         parser.error(f"Choose a fresh work directory: {args.work}")
     if not os.environ.get("HF_TOKEN"):
@@ -169,6 +179,15 @@ def main() -> None:
                                      local_dir=work / "models" / "adapter")) / args.adapter_path
     if not (adapter / "adapter_config.json").exists():
         raise FileNotFoundError(f"No adapter at {args.adapter_repo}@{args.adapter_revision}/{args.adapter_path}")
+    if args.adapter_scale < 1:
+        from safetensors.torch import load_file, save_file
+
+        weaker = work / "models" / "adapter-scaled"
+        weaker.mkdir()
+        (weaker / "adapter_config.json").write_bytes((adapter / "adapter_config.json").read_bytes())
+        save_file(scaled(load_file(adapter / "adapter_model.safetensors"), args.adapter_scale),
+                  weaker / "adapter_model.safetensors")
+        adapter = weaker
 
     environment = {**os.environ, "PYTHONPATH": str(code / "src"), "LANGSAFE_SPEC": str(work / "spec.yaml"),
                    "LANGSAFE_RUNS_DIR": str(run), "LANGSAFE_DATA_DIR": str(run / "data")}
@@ -218,7 +237,8 @@ def main() -> None:
               and all(cell["drop_within_limit"] for cell in capability.values()))
     report = {
         "base": args.base, "base_revision": args.base_revision,
-        "adapter": {"repo": args.adapter_repo, "revision": args.adapter_revision, "path": args.adapter_path},
+        "adapter": {"repo": args.adapter_repo, "revision": args.adapter_revision, "path": args.adapter_path,
+                    "scale": args.adapter_scale},
         "code": {"repository": CODE, "revision": args.code_revision, "spec_digest": spec_digest(spec)},
         "data": {"repository": DATA, "revision": DATA_REVISION, "languages": sorted(languages),
                  "prompts": len(prompts), "limit_per_language_and_kind": args.limit},

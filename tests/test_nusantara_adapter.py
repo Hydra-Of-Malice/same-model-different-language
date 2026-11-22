@@ -31,6 +31,7 @@ from nusantara_adapter import (
     predicted_label,
     response_loss,
     prior_holdout_ids,
+    replay_examples,
     schedule,
     selection_score,
     split_levels,
@@ -311,3 +312,19 @@ def test_back_translation_keeps_native_javanese_as_the_target_and_drops_bad_sour
     assert example.source == "Saya sangat suka makan nasi goreng setiap pagi."
     assert example.prompt.startswith("Translate the following Indonesian text into Javanese.")
     assert new_tokens(example) == 512 and new_tokens(Example("senti_jav", "1", "p", "positive", "s", LABELS)) == 8
+
+
+def test_replay_examples_keep_the_parent_answer_and_drop_empty_or_cut_ones():
+    rows = [{"id": "a", "lang": "jv", "kind": "harmful", "text": "Piye carane?"},
+            {"id": "b", "lang": "en", "kind": "benign", "text": "How do I bake bread?"},
+            {"id": "c", "lang": "en", "kind": "benign", "text": "Tell me more."},
+            {"id": "d", "lang": "jv", "kind": "benign", "text": "Apa kabar?"}]
+    answers = [("Nyuwun sewu, kula mboten saged.", False), ("Mix flour and", True), ("   ", False), ("Apik.", False)]
+    examples, stats = replay_examples(rows, answers)
+    assert [(e.key, e.row_id, e.prompt, e.reference) for e in examples] == [
+        ("replay_jv", "r:a", "Piye carane?", "Nyuwun sewu, kula mboten saged."),
+        ("replay_jv", "r:d", "Apa kabar?", "Apik."),
+    ]
+    assert stats == {"prompts": 4, "kept": 2, "kept_by_language_and_kind": {"jv_harmful": 1, "jv_benign": 1}}
+    with pytest.raises(ValueError):
+        replay_examples(rows, answers[:3])

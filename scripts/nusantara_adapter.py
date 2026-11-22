@@ -80,6 +80,9 @@ WRITES_SHA256 = {
 TOPICS = ("food & beverages", "sports", "leisures", "religion", "culture & heritage", "slice of life", "technology",
           "business")
 EMOTIONS = ("happy", "sad", "angry", "fear", "surprise", "disgusted", "shame")
+# Repair-split prompts of this project's public evaluation set. They share no prompt group with the held-out split.
+REPLAY_REPO = "HydraOfMalice/tiny-aya-earth-langsafe-eval"
+REPLAY_REVISION = "af423e4a301c9265e1a112bf4478c9a6b51f20dd"
 CORE = ("ind_to_jav", "jav_to_ind")
 CONTROL = "eng_to_ind"
 SEED = 20261122
@@ -624,6 +627,21 @@ def selection_score(cells: dict, arm: str = "after", mode: str = "javanese") -> 
     return sum(cells[key][arm]["chrf_pp"] for key in keys) / len(keys)
 
 
+def replay_examples(rows: list[dict], answers: list[tuple[str, bool]]) -> tuple[list[Example], dict]:
+    """Training examples that ask the adapter to answer off-task prompts the way its parent did.
+
+    The targets are the parent's own answers, so the adapter is pulled towards the parent's behaviour, refusals
+    included, on prompts outside its tasks. Empty and cut-off answers are dropped.
+    """
+    examples, kept = [], Counter()
+    for row, (answer, cut) in zip(rows, answers, strict=True):
+        if cut or not normalize(answer):
+            continue
+        examples.append(Example(f"replay_{row['lang']}", f"r:{row['id']}", row["text"], answer, row["text"]))
+        kept[f"{row['lang']}_{row['kind']}"] += 1
+    return examples, {"prompts": len(rows), "kept": len(examples), "kept_by_language_and_kind": dict(kept)}
+
+
 def back_translation(pairs: list[tuple[str, tuple[str, bool]]]) -> tuple[list[Example], dict]:
     """Training examples from machine-translated Indonesian to the native Javanese paragraph it came from.
 
@@ -675,6 +693,9 @@ def main() -> None:
                         help="Translate the NusaParagraph training paragraphs into Indonesian with this adapter and "
                              "train on the result as Indonesian-to-Javanese paragraphs. Needs --paragraphs")
     parser.add_argument("--num-beams", type=int, default=1, help="Also score the adapter with this many beams")
+    parser.add_argument("--replay", action="store_true",
+                        help="Also train on the parent's own answers to this project's repair-split prompts, to keep "
+                             "the adapter close to its parent outside its tasks")
     parser.add_argument("--rank", type=int, default=64)
     parser.add_argument("--alpha", type=int, help="LoRA alpha. Defaults to twice the rank")
     parser.add_argument("--dropout", type=float, default=0.05)
@@ -835,6 +856,18 @@ def main() -> None:
     model = AutoModelForCausalLM.from_pretrained(args.base, revision=args.base_revision, dtype=dtype,
                                                 device_map={"": 0 if args.device == "cuda" else "mps"},
                                                 attn_implementation="sdpa")
+    if args.replay:
+        path = hf_hub_download(REPLAY_REPO, "data/repair.jsonl", repo_type="dataset", revision=REPLAY_REVISION)
+        with open(path, encoding="utf-8") as stream:
+            rows = [json.loads(line) for line in stream if line.strip()]
+        rows = rows[:4 * args.train_rows] if args.train_rows else rows
+        requests = [Example(f"replay_{row['lang']}", str(row["id"]), row["text"], "", row["text"]) for row in rows]
+        print(f"Answering {len(requests)} repair-split prompts with the parent.", flush=True)
+        replayed, provenance["replay"] = replay_examples(rows, generate(model, tokenizer, requests, args.batch_size))
+        provenance["replay"].update(source=REPLAY_REPO, revision=REPLAY_REVISION)
+        train += replayed
+        provenance["train_examples"] = dict(Counter(example.key for example in train))
+        print(json.dumps({"replay": provenance["replay"]}), flush=True)
     if helper:
         from peft import PeftModel
 
