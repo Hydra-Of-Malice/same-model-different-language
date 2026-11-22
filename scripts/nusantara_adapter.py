@@ -616,6 +616,8 @@ def main() -> None:
     parser.add_argument("--paragraphs", action="store_true",
                         help="Add NusaParagraph: topic and emotion of paragraphs written in Javanese")
     parser.add_argument("--writes-dir", type=Path, help="Local copy of the pinned NusaWrites `data` directory")
+    parser.add_argument("--base", default=BASE, help="Starting checkpoint on the Hub")
+    parser.add_argument("--base-revision", default=BASE_REVISION, help="Full Hub commit hash of that checkpoint")
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--rank", type=int, default=64)
     parser.add_argument("--alpha", type=int, help="LoRA alpha. Defaults to twice the rank")
@@ -653,6 +655,10 @@ def main() -> None:
     prior_repo, _, prior_revision = (args.compare_adapter or "").partition("@")
     if args.compare_adapter and (not prior_repo or not re.fullmatch(r"[0-9a-f]{40}", prior_revision)):
         parser.error("--compare-adapter requires REPO@SHA with a full Hub commit hash")
+    if not re.fullmatch(r"[0-9a-f]{40}", args.base_revision):
+        parser.error("--base-revision must be a full Hub commit hash")
+    if args.compare_adapter and (args.base, args.base_revision) != (BASE, BASE_REVISION):
+        parser.error("--compare-adapter only fits the default checkpoint, which the earlier adapters were trained on")
 
     directions = parse_pairs(args.pairs)
     senti, lid, triaged = parse_languages(args.senti), parse_languages(args.lid), parse_languages(args.triage)
@@ -757,12 +763,12 @@ def main() -> None:
 
     started = time.monotonic()
     set_seed(args.seed)
-    tokenizer = AutoTokenizer.from_pretrained(BASE, revision=BASE_REVISION)
+    tokenizer = AutoTokenizer.from_pretrained(args.base, revision=args.base_revision)
     tokenizer.padding_side = "left"
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
     dtype = torch.bfloat16 if args.device == "cuda" else torch.float32
-    model = AutoModelForCausalLM.from_pretrained(BASE, revision=BASE_REVISION, dtype=dtype,
+    model = AutoModelForCausalLM.from_pretrained(args.base, revision=args.base_revision, dtype=dtype,
                                                 device_map={"": 0 if args.device == "cuda" else "mps"},
                                                 attn_implementation="sdpa")
     modules = ["q_proj", "v_proj"] if args.modules == "attention" else [
@@ -770,7 +776,7 @@ def main() -> None:
     alpha = args.alpha or 2 * args.rank
     model = get_peft_model(model, LoraConfig(task_type="CAUSAL_LM", r=args.rank, lora_alpha=alpha,
                                             lora_dropout=args.dropout, use_rslora=args.rslora,
-                                            target_modules=modules, revision=BASE_REVISION))
+                                            target_modules=modules, revision=args.base_revision))
     checkpointing = args.gradient_checkpointing
     if checkpointing:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
@@ -850,11 +856,11 @@ def main() -> None:
     args.output.mkdir(parents=True)
     model.save_pretrained(args.output)
     card = (
-        f"---\nlicense: cc-by-nc-4.0\nbase_model: {BASE}\npipeline_tag: translation\n---\n\n"
+        f"---\nlicense: cc-by-nc-4.0\nbase_model: {args.base}\npipeline_tag: translation\n---\n\n"
         "# Private Javanese and regional-language adapter\n\n"
         "Research adapter for translation, classification and structured message triage in Javanese and "
         "neighbouring Indonesian languages. Safety and general capability have yet to be assessed.\n\n"
-        f"Pinned starting checkpoint: {BASE}@{BASE_REVISION}. Training used the native-translated "
+        f"Pinned starting checkpoint: {args.base}@{args.base_revision}. Training used the native-translated "
         "[NusaX](https://github.com/IndoNLP/nusax) corpus (CC BY-SA 4.0), "
         f"revision `{DATA_REVISION}`, reformatted into instructions. "
         + ("It also used the [Unggah-Ungguh](https://huggingface.co/datasets/JavaneseHonorifics/Unggah-Ungguh) "
@@ -891,7 +897,7 @@ def main() -> None:
         model.set_adapter("default")
     fresh = {row["id"] for row in test_rows} - scored_before
     metrics = {
-        "base": BASE, "base_revision": BASE_REVISION, "data": provenance, "seed": args.seed,
+        "base": args.base, "base_revision": args.base_revision, "data": provenance, "seed": args.seed,
         "runtime": {"device": torch.cuda.get_device_name() if args.device == "cuda" else "mps",
                     "precision": str(dtype).removeprefix("torch."),
                     "minutes": {"training": training_minutes, "total": (time.monotonic() - started) / 60},

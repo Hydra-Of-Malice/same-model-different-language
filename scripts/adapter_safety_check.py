@@ -118,6 +118,8 @@ def check_router(spec: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--base", default=BASE, help="Parent checkpoint the adapter was trained on")
+    parser.add_argument("--base-revision", default=BASE_REVISION, help="Full Hub commit hash of the parent")
     parser.add_argument("--adapter-repo", required=True, help="Hugging Face model repository holding the adapter")
     parser.add_argument("--adapter-revision", required=True, help="Full Hub commit hash of that repository")
     parser.add_argument("--adapter-path", default="", help="Folder of the adapter inside the repository")
@@ -130,7 +132,7 @@ def main() -> None:
     parser.add_argument("--private-repo", help="Private Hugging Face model repository for the aggregate report")
     parser.add_argument("--run-name", default="safety-check", help="Folder for the report inside that repository")
     args = parser.parse_args()
-    for name in ("adapter_revision", "code_revision"):
+    for name in ("adapter_revision", "code_revision", "base_revision"):
         if not re.fullmatch(r"[0-9a-f]{40}", getattr(args, name)):
             parser.error(f"--{name.replace('_', '-')} must be a full commit hash")
     if args.work.exists():
@@ -161,7 +163,7 @@ def main() -> None:
     heldout = Path(hf_hub_download(DATA, "data/heldout.jsonl", repo_type="dataset", revision=DATA_REVISION))
     prompts = filter_prompts(heldout.read_text(encoding="utf-8").splitlines(), languages)
     (run / "data" / "heldout.jsonl").write_text("\n".join(prompts) + "\n", encoding="utf-8")
-    parent = snapshot_download(BASE, revision=BASE_REVISION, local_dir=work / "models" / "parent")
+    parent = snapshot_download(args.base, revision=args.base_revision, local_dir=work / "models" / "parent")
     pattern = f"{args.adapter_path.strip('/')}/adapter_*" if args.adapter_path else "adapter_*"
     adapter = Path(snapshot_download(args.adapter_repo, revision=args.adapter_revision, allow_patterns=[pattern],
                                      local_dir=work / "models" / "adapter")) / args.adapter_path
@@ -215,7 +217,7 @@ def main() -> None:
     passed = (all(all(gate.values()) for condition in safety.values() for gate in condition["gates"].values())
               and all(cell["drop_within_limit"] for cell in capability.values()))
     report = {
-        "base": BASE, "base_revision": BASE_REVISION,
+        "base": args.base, "base_revision": args.base_revision,
         "adapter": {"repo": args.adapter_repo, "revision": args.adapter_revision, "path": args.adapter_path},
         "code": {"repository": CODE, "revision": args.code_revision, "spec_digest": spec_digest(spec)},
         "data": {"repository": DATA, "revision": DATA_REVISION, "languages": sorted(languages),
