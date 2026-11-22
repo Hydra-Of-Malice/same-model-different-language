@@ -26,6 +26,7 @@ from nusantara_adapter import (
     paragraph_examples,
     parse_triage,
     predicted_label,
+    response_loss,
     prior_holdout_ids,
     schedule,
     selection_score,
@@ -245,3 +246,36 @@ def test_nusa_writes_examples_keep_tweets_apart_and_drop_held_out_text():
     assert unseen(tweets, {"lagi ngapa"}) == []
     assert unseen(tweets, {"liyane"}) == tweets
     assert unseen([topic], {"sports"}) == [topic] and unseen([topic], {"bal balan iku rame"}) == []
+
+
+def test_response_loss_matches_the_usual_loss_without_prompt_logits():
+    torch = pytest.importorskip("torch")
+    torch.manual_seed(0)
+
+    class Body(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.embed = torch.nn.Embedding(11, 6)
+
+        def forward(self, input_ids, attention_mask, use_cache):
+            return type("Output", (), {"last_hidden_state": self.embed(input_ids) * attention_mask[..., None]})()
+
+    class LanguageModel(torch.nn.Module):
+        logit_scale = 0.5
+
+        def __init__(self):
+            super().__init__()
+            self.model, self.lm_head, self.calls = Body(), torch.nn.Linear(6, 11, bias=False), []
+            self.lm_head.register_forward_hook(lambda module, inputs, output: self.calls.append(inputs[0].shape))
+
+    lm = LanguageModel()
+    batch = {"input_ids": torch.tensor([[1, 2, 3, 4, 5], [6, 7, 8, 0, 0]]),
+             "attention_mask": torch.tensor([[1, 1, 1, 1, 1], [1, 1, 1, 0, 0]]),
+             "labels": torch.tensor([[-100, -100, 3, 4, 5], [-100, 7, 8, -100, -100]])}
+    loss = response_loss(lm, batch)
+    hidden = lm.model(batch["input_ids"], batch["attention_mask"], False).last_hidden_state
+    full = lm.lm_head(hidden) * lm.logit_scale
+    expected = torch.nn.functional.cross_entropy(full[:, :-1].reshape(-1, 11), batch["labels"][:, 1:].reshape(-1),
+                                                 ignore_index=-100)
+    assert loss.item() == pytest.approx(expected.item(), rel=1e-6)
+    assert lm.calls[0] == (5, 6)

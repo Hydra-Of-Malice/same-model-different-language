@@ -391,6 +391,21 @@ def length_batches(lengths: list[int], batch_size: int, rng: random.Random, max_
     return batches
 
 
+def response_loss(language_model, batch: dict):
+    """Mean cross-entropy over response tokens, with logits computed for those positions only.
+
+    The vocabulary has 262,144 entries, so logits for every prompt position cost far more memory than the layers do.
+    """
+    import torch
+
+    hidden = language_model.model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"],
+                                  use_cache=False).last_hidden_state
+    targets = batch["labels"][:, 1:]
+    keep = targets != -100
+    logits = language_model.lm_head(hidden[:, :-1][keep]) * language_model.logit_scale
+    return torch.nn.functional.cross_entropy(logits.float(), targets[keep])
+
+
 def schedule(step: int, total: int, warmup: int) -> float:
     """Linear warm-up, then cosine decay to one tenth of the peak."""
     if step < warmup:
@@ -756,7 +771,8 @@ def main() -> None:
     model = get_peft_model(model, LoraConfig(task_type="CAUSAL_LM", r=args.rank, lora_alpha=alpha,
                                             lora_dropout=args.dropout, use_rslora=args.rslora,
                                             target_modules=modules, revision=BASE_REVISION))
-    if args.gradient_checkpointing:
+    checkpointing = args.gradient_checkpointing
+    if checkpointing:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
     trainable = [param for param in model.parameters() if param.requires_grad]
     optimizer = torch.optim.AdamW(trainable, lr=args.learning_rate, weight_decay=args.weight_decay)
@@ -779,6 +795,7 @@ def main() -> None:
                       "optimizer_steps": total_steps}), flush=True)
 
     rng = random.Random(args.seed)
+    language_model = model.get_base_model()   # the same modules, adapter layers included
     history, best, step = [], None, 0
     for epoch in range(args.epochs):
         model.train()
@@ -787,10 +804,21 @@ def main() -> None:
         for index, batch in enumerate(batches):
             tensors = {name: torch.tensor(values, device=model.device)
                        for name, values in collate([encoded[i] for i in batch], tokenizer.pad_token_id).items()}
-            loss = model(**tensors, use_cache=False).loss
+            for attempt in range(2):
+                try:
+                    loss = response_loss(language_model, tensors)
+                    (loss / args.accumulation).backward()
+                    break
+                except torch.OutOfMemoryError:
+                    if checkpointing or attempt:
+                        raise
+                    loss = None   # drop the failed graph, keep gradients already accumulated from earlier batches
+                    torch.cuda.empty_cache()
+                    model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+                    checkpointing = True
+                    print("Out of GPU memory: continuing with gradient checkpointing.", flush=True)
             if not loss.isfinite().item():
                 raise RuntimeError(f"Non-finite training loss in epoch {epoch + 1}, batch {index + 1}")
-            (loss / args.accumulation).backward()
             losses.append(loss.item())
             if (index + 1) % args.accumulation == 0 or index + 1 == len(batches):
                 for group in optimizer.param_groups:
@@ -815,7 +843,7 @@ def main() -> None:
             best = (score, epoch + 1, {name: value.detach().cpu().clone()
                                        for name, value in model.state_dict().items() if "lora_" in name})
     model.load_state_dict(best[2], strict=False)
-    if args.gradient_checkpointing:
+    if checkpointing:
         model.gradient_checkpointing_disable()
     training_minutes = (time.monotonic() - started) / 60
 
@@ -876,7 +904,8 @@ def main() -> None:
                      "learning_rate": args.learning_rate, "weight_decay": args.weight_decay,
                      "warmup_steps": warmup_steps, "batch_size": args.train_batch_size,
                      "batch_tokens": args.batch_tokens,
-                     "gradient_accumulation": args.accumulation, "history": history},
+                     "gradient_accumulation": args.accumulation, "gradient_checkpointing": checkpointing,
+                     "history": history},
         "generation": {"preamble": "default", "do_sample": False, "max_new_tokens": NEW_TOKENS,
                        "batch_size": args.batch_size},
         "prior_adapter": {"repo": prior_repo, "revision": prior_revision} if prior_repo else None,

@@ -151,6 +151,34 @@ For the follow-up, use a separate private destination and add `--english-replay 
 
 The published training and test splits have 500 and 400 rows, respectively. The script checks both file hashes and checks all three languages for exact normalized text overlap across the splits. It saves the adapter and aggregate metrics. The existing model loader accepts a PEFT directory or Hub adapter ID for further research evaluation. Pin the starting checkpoint and adapter by downloading their recorded revisions before using that loader. [Training script](../scripts/javanese_translation_pilot.py) · [Model loader](../src/langsafe/gen/model.py#L71) · [Hugging Face Jobs quickstart](https://huggingface.co/docs/hub/en/jobs-quickstart)
 
+### Expanded adapter and safety check
+
+Check every split and guard without a GPU:
+
+```bash
+python scripts/nusantara_adapter.py --data-only --triage jav --levels --tweets --paragraphs --lid ind,jav
+```
+
+With `hf auth login` completed, start a run on Hugging Face Jobs. `--secrets HF_TOKEN` passes the login to the job, which creates the destination as a private repository when needed and refuses to write to a public one:
+
+```bash
+hf jobs uv run --flavor l40sx1 --timeout 3h --secrets HF_TOKEN --detach --name suite-r64 \
+  scripts/nusantara_adapter.py --triage jav --levels --tweets --paragraphs --lid ind,jav --epochs 3 \
+  --private-repo "$HF_ADAPTER_REPO" --run-name suite-r64
+```
+
+Each run writes `adapter_model.safetensors`, `metrics.json` and `predictions.jsonl` to its own folder of that repository. The predictions are answers to benign translation and classification prompts, kept for native review.
+
+Then check the chosen adapter against its parent. `REVISION` is the full commit hash of the adapter repository:
+
+```bash
+hf jobs uv run --flavor l40sx1 --timeout 3h --secrets HF_TOKEN --detach --name suite-r64-safety \
+  scripts/adapter_safety_check.py --adapter-repo "$HF_ADAPTER_REPO" --adapter-revision REVISION \
+  --adapter-path suite-r64 --private-repo "$HF_ADAPTER_REPO" --run-name suite-r64
+```
+
+The token needs permission to call Inference Providers, since the judges run on the router. Add `--limit 4` for a ten-minute trial of the whole path.
+
 ## Source search log
 
 **22 November 2026, second pass.** Three wider searches covered use cases and datasets, fine-tuning recipes for Tiny Aya and other small models, and this repository's own evaluation path. Dataset sizes, licences and file layouts were read from the Hub API, dataset cards and the pinned files. Gated sets (FLORES+, BOUQuET, SEA-HELM) were listed but not opened. Paper figures were read from HTML renderings and have not been re-derived. The Hub listing of models built on Tiny Aya showed 388 derived models on that date.
