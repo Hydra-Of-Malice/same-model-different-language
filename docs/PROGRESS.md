@@ -36,6 +36,24 @@ Everything except the private run outputs is in this repo or public on Hugging F
 - **Aditya:** check the billing page (D14), send the mentor one-pager (D15), the organiser ticket (D16), review and
   deploy the Space (D10), and submit the form (D17).
 
+## 22 November 2026
+- **Evening** **The follow-up now has a multi-task adapter script, a safety check for adapters, and a ranked list of
+  use cases.** All of it is on the local branch `followup/javanese-translation-pilot`. Nothing has been trained with the
+  new script yet: Hugging Face Jobs start only from the `hf` CLI, and this Mac's CLI has no login.
+  - `scripts/nusantara_adapter.py` trains one LoRA adapter on translation (NusaX-MT and NusaTranslation), sentiment,
+    Javanese speech levels (Unggah-Ungguh), topic and emotion of native paragraphs (NusaParagraph), language
+    identification and a JSON triage task, for Javanese or for all ten NusaX regional languages. It picks the epoch on
+    validation data and scores the parent and the adapter on the same test items.
+  - `scripts/adapter_safety_check.py` runs the frozen pipeline on the published Javanese and English held-out prompts
+    for the parent and an adapter, with the router judges, and applies the specification's thresholds.
+  - A two-row end-to-end run on Apple MPS passed, without the earlier-adapter comparison: the cached copy of the first
+    pilot adapter has no weights file.
+  - The survey, the recipe and the run plan are in [FOLLOWUP_USE_CASES.md](FOLLOWUP_USE_CASES.md). The planned runs
+    cost under $20 of the $199.57 in credits on the PDGamerSG account, which expire on 19 December.
+- **Afternoon** **History on `main` was rewritten to drop co-author trailers from 13 commit messages.** Trees, authors
+  and dates are unchanged. Hashes changed from `ca604dd` onward: the old `9073899` is now `7c22537`. Anyone with a
+  clone runs `git fetch origin && git reset --hard origin/main`. A bundle of the old history is kept outside the repo.
+
 ## 20 November 2026
 - **Morning** **The 32B pair has judged every held-out answer, and the Javanese gap no longer passes under it.**
   - Aya Expanse 32B and Qwen3-32B, the pair the spec names, judged all 4,528 answers of all 18 models (the 16 report
