@@ -37,9 +37,23 @@ Everything except the private run outputs is in this repo or public on Hugging F
   deploy the Space (D10), and submit the form (D17).
 
 ## 22 November 2026
+- **Night** **Eight adapter runs and two safety checks are done, and the follow-up is on `main`.**
+  - `suite-r128`, trained on about 26,000 Javanese examples, takes Indonesian to Javanese from 43.0 to 65.2 chrF++ and
+    Javanese to Indonesian from 55.5 to 75.3 on the NusaX test split, with the English to Indonesian control at 48.3
+    against 48.2. The first pilot adapter, scored on the same rows, reaches 53.5 and 63.6.
+  - The safety check separates two adapters the task tables cannot: `suite-r128` keeps content safety and loses 3.0
+    points of Indonesian Global-MMLU-Lite, and `suite-r64-lr2e-4` drops Javanese content-safe answers from 79.0% to
+    51.1%. Neither is cleared for use.
+  - Adding nine more languages to one adapter cost Javanese and the control. Starting from Tiny Aya Global changed
+    little.
+  - A final round is running: three seeds, back-translated paragraphs, replay of the parent's answers, the adapter at
+    reduced strength, and an NLLB-200 baseline on the same test rows.
+  - Cost so far is $72.28 of the credits on the PDGamerSG account: $71.27 of GPU jobs and $1.01 of judge calls.
+  - Tables and limits: [FOLLOWUP_USE_CASES.md](FOLLOWUP_USE_CASES.md). A paper draft in the EMNLP 2023 format is being
+    written under `paper/`.
 - **Evening** **The follow-up now has a multi-task adapter script, a safety check for adapters, and a ranked list of
-  use cases.** All of it is on the local branch `followup/javanese-translation-pilot`. Nothing has been trained with the
-  new script yet: Hugging Face Jobs start only from the `hf` CLI, and this Mac's CLI has no login.
+  use cases.** At this point nothing had been trained with the new script: Hugging Face Jobs start only from the `hf`
+  CLI, and this Mac's CLI had no login.
   - `scripts/nusantara_adapter.py` trains one LoRA adapter on translation (NusaX-MT and NusaTranslation), sentiment,
     Javanese speech levels (Unggah-Ungguh), topic and emotion of native paragraphs (NusaParagraph), language
     identification and a JSON triage task, for Javanese or for all ten NusaX regional languages. It picks the epoch on

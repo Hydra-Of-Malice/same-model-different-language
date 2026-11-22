@@ -662,6 +662,79 @@ def back_translation(pairs: list[tuple[str, tuple[str, bool]]]) -> tuple[list[Ex
     return examples, {"paragraphs": len(pairs), "kept": len(examples), "dropped": dict(dropped)}
 
 
+def assemble(args, directions: list[tuple[str, str]], senti: tuple[str, ...], lid: tuple[str, ...],
+             triaged: tuple[str, ...]) -> dict:
+    """Load every requested source, apply the split guards, and build the training, validation and test examples."""
+    hashes: dict[str, str] = {}
+    splits = {split: load_split(split, args.data_dir, hashes) for split in ("train", "valid", "test")}
+    train_rows, valid_rows, dropped = guard_splits(splits["train"], splits["valid"], splits["test"])
+    if args.train_rows:
+        train_rows = train_rows[:args.train_rows]
+    test_rows = splits["test"]
+    scored_before = prior_holdout_ids(test_rows)
+    javanese_keys = {key for key in (*(f"{a}_to_{b}" for a, b in directions), "senti_jav", "lid_jav", "triage_jav",
+                                     CONTROL) if "jav" in key or key == CONTROL}
+    levels = None
+    if args.levels:
+        def sentences(rows):
+            return {normalize(row[code]) for row in rows for code in ("ind", "jav", "eng")}
+
+        levels = split_levels(load_levels(args.levels_file, hashes), sentences(test_rows) | sentences(valid_rows))
+        level_test = sentences(levels["test"]) | sentences(levels["valid"])
+        kept = [row for row in train_rows if sentences([row]).isdisjoint(level_test)]
+        dropped["train_rows_dropped_for_speech_level_overlap"] = len(train_rows) - len(kept)
+        train_rows = kept
+    train = build(train_rows, directions, senti, lid, triaged)
+    valid = subsample(build(valid_rows, [pair for pair in directions if "_to_".join(pair) in CORE] or directions,
+                            tuple(code for code in senti if code == "jav"), ()), args.valid_rows)
+    test = subsample(build(test_rows, [*directions, ("eng", "ind")], senti, lid, triaged), args.eval_rows_other,
+                     javanese_keys, args.eval_rows)
+    if levels:
+        train += level_examples(levels["train"][:4 * args.train_rows] if args.train_rows else levels["train"])
+        valid += subsample(level_examples(levels["valid"]), args.valid_rows)
+        test += subsample(level_examples(levels["test"]),
+                          len(levels["test"]) if args.eval_rows >= len(test_rows) else args.eval_rows)
+    writes = {}
+    for name, wanted, make in (("nusa_kalimat-mt", args.tweets, tweet_examples),
+                               ("nusa_alinea-topic", args.paragraphs, lambda rows: paragraph_examples(rows, "topic")),
+                               ("nusa_alinea-emot", args.paragraphs, lambda rows: paragraph_examples(rows, "emotion"))):
+        if wanted:
+            writes[name] = {split: make(load_writes(name, split, args.writes_dir, hashes))
+                            for split in ("train", "valid", "test")}
+    if writes:   # NusaWrites reuses text across its tasks and splits, so guard every source against every held-out text
+        extra_valid = [example for parts in writes.values() for example in subsample(parts["valid"], args.valid_rows)]
+        extra_test = [example for parts in writes.values() for example in subsample(parts["test"], args.eval_rows)]
+        held_out = {normalize(text) for parts in writes.values() for split in ("valid", "test")
+                    for example in parts[split] for text in (example.source, example.reference)}
+        held_out |= {normalize(text) for example in (*valid, *test) for text in (example.source, example.reference)}
+        extra_test = unseen(extra_test, {normalize(e.source) for e in valid + extra_valid})
+        extra_train = [example for parts in writes.values()
+                       for example in (parts["train"][:8 * args.train_rows] if args.train_rows else parts["train"])]
+        kept = unseen(extra_train, held_out)
+        dropped["nusa_writes_train_examples_dropped"] = len(extra_train) - len(kept)
+        before = len(train)
+        train = unseen(train, {normalize(text) for example in (*extra_valid, *extra_test)
+                               for text in (example.source, example.reference)})
+        dropped["train_examples_dropped_for_nusa_writes_overlap"] = before - len(train)
+        train, valid, test = train + kept, valid + extra_valid, test + extra_test
+    if args.repeat_javanese > 1:
+        train = [example for example in train
+                 for _ in range(1 if set(example.key.split("_")) & set(REGIONAL) else args.repeat_javanese)]
+    provenance = {
+        "source": DATA_URL, "revision": DATA_REVISION, "sha256": hashes, **dropped,
+        "train_rows": len(train_rows), "valid_rows": len(valid_rows), "test_rows": len(test_rows),
+        "speech_levels": {"source": LEVELS_URL, "revision": LEVELS_REVISION,
+                          "rows": {split: len(rows) for split, rows in levels.items()}} if levels else None,
+        "nusa_writes": {"source": WRITES_URL, "revision": WRITES_REVISION, "files": sorted(writes)} if writes else None,
+        "test_rows_scored_by_earlier_pilots": len(scored_before),
+        "train_examples": dict(Counter(example.key for example in train)),
+        "valid_examples": dict(Counter(example.key for example in valid)),
+        "test_examples": dict(Counter(example.key for example in test)),
+    }
+    return {"train": train, "valid": valid, "test": test, "provenance": provenance, "test_rows": test_rows,
+            "scored_before": scored_before, "levels": levels, "writes": writes}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pairs", default="ind-jav,eng-jav", help="Translation pairs, trained in both directions")
@@ -760,72 +833,10 @@ def main() -> None:
     if any(not 0 < scale < 1 for scale in scales) or len(set(scales)) != len(scales):
         parser.error("--scales takes distinct strengths between 0 and 1")
 
-    hashes: dict[str, str] = {}
-    splits = {split: load_split(split, args.data_dir, hashes) for split in ("train", "valid", "test")}
-    train_rows, valid_rows, dropped = guard_splits(splits["train"], splits["valid"], splits["test"])
-    if args.train_rows:
-        train_rows = train_rows[:args.train_rows]
-    test_rows = splits["test"]
-    scored_before = prior_holdout_ids(test_rows)
-    javanese_keys = {key for key in (*(f"{a}_to_{b}" for a, b in directions), "senti_jav", "lid_jav", "triage_jav",
-                                     CONTROL) if "jav" in key or key == CONTROL}
-    levels = None
-    if args.levels:
-        def sentences(rows):
-            return {normalize(row[code]) for row in rows for code in ("ind", "jav", "eng")}
-
-        levels = split_levels(load_levels(args.levels_file, hashes), sentences(test_rows) | sentences(valid_rows))
-        level_test = sentences(levels["test"]) | sentences(levels["valid"])
-        kept = [row for row in train_rows if sentences([row]).isdisjoint(level_test)]
-        dropped["train_rows_dropped_for_speech_level_overlap"] = len(train_rows) - len(kept)
-        train_rows = kept
-    train = build(train_rows, directions, senti, lid, triaged)
-    valid = subsample(build(valid_rows, [pair for pair in directions if "_to_".join(pair) in CORE] or directions,
-                            tuple(code for code in senti if code == "jav"), ()), args.valid_rows)
-    test = subsample(build(test_rows, [*directions, ("eng", "ind")], senti, lid, triaged), args.eval_rows_other,
-                     javanese_keys, args.eval_rows)
-    if levels:
-        train += level_examples(levels["train"][:4 * args.train_rows] if args.train_rows else levels["train"])
-        valid += subsample(level_examples(levels["valid"]), args.valid_rows)
-        test += subsample(level_examples(levels["test"]),
-                          len(levels["test"]) if args.eval_rows >= len(test_rows) else args.eval_rows)
-    writes = {}
-    for name, wanted, make in (("nusa_kalimat-mt", args.tweets, tweet_examples),
-                               ("nusa_alinea-topic", args.paragraphs, lambda rows: paragraph_examples(rows, "topic")),
-                               ("nusa_alinea-emot", args.paragraphs, lambda rows: paragraph_examples(rows, "emotion"))):
-        if wanted:
-            writes[name] = {split: make(load_writes(name, split, args.writes_dir, hashes))
-                            for split in ("train", "valid", "test")}
-    if writes:   # NusaWrites reuses text across its tasks and splits, so guard every source against every held-out text
-        extra_valid = [example for parts in writes.values() for example in subsample(parts["valid"], args.valid_rows)]
-        extra_test = [example for parts in writes.values() for example in subsample(parts["test"], args.eval_rows)]
-        held_out = {normalize(text) for parts in writes.values() for split in ("valid", "test")
-                    for example in parts[split] for text in (example.source, example.reference)}
-        held_out |= {normalize(text) for example in (*valid, *test) for text in (example.source, example.reference)}
-        extra_test = unseen(extra_test, {normalize(e.source) for e in valid + extra_valid})
-        extra_train = [example for parts in writes.values()
-                       for example in (parts["train"][:8 * args.train_rows] if args.train_rows else parts["train"])]
-        kept = unseen(extra_train, held_out)
-        dropped["nusa_writes_train_examples_dropped"] = len(extra_train) - len(kept)
-        before = len(train)
-        train = unseen(train, {normalize(text) for example in (*extra_valid, *extra_test)
-                               for text in (example.source, example.reference)})
-        dropped["train_examples_dropped_for_nusa_writes_overlap"] = before - len(train)
-        train, valid, test = train + kept, valid + extra_valid, test + extra_test
-    if args.repeat_javanese > 1:
-        train = [example for example in train
-                 for _ in range(1 if set(example.key.split("_")) & set(REGIONAL) else args.repeat_javanese)]
-    provenance = {
-        "source": DATA_URL, "revision": DATA_REVISION, "sha256": hashes, **dropped,
-        "train_rows": len(train_rows), "valid_rows": len(valid_rows), "test_rows": len(test_rows),
-        "speech_levels": {"source": LEVELS_URL, "revision": LEVELS_REVISION,
-                          "rows": {split: len(rows) for split, rows in levels.items()}} if levels else None,
-        "nusa_writes": {"source": WRITES_URL, "revision": WRITES_REVISION, "files": sorted(writes)} if writes else None,
-        "test_rows_scored_by_earlier_pilots": len(scored_before),
-        "train_examples": dict(Counter(example.key for example in train)),
-        "valid_examples": dict(Counter(example.key for example in valid)),
-        "test_examples": dict(Counter(example.key for example in test)),
-    }
+    data = assemble(args, directions, senti, lid, triaged)
+    train, valid, test, provenance = data["train"], data["valid"], data["test"], data["provenance"]
+    test_rows, scored_before, levels, writes = (data[name] for name in ("test_rows", "scored_before", "levels",
+                                                                        "writes"))
     print(json.dumps({"data": provenance}), flush=True)
     if args.data_only:
         return

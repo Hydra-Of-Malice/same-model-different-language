@@ -72,6 +72,23 @@ Conditions: close at least half the gap, over-refusal up by at most 2 points, ca
 The full results, limits and what did not work are in the
 [article](https://huggingface.co/blog/HydraOfMalice/same-model-different-language-different-safety).
 
+## Follow-up: adapting the repaired checkpoint to Javanese
+
+After the submission we fine-tuned LoRA adapters on the selected checkpoint for Javanese tasks, then ran the same
+safety pipeline on the adapters. Details, limits and commands are in
+[docs/FOLLOWUP_USE_CASES.md](docs/FOLLOWUP_USE_CASES.md).
+
+- **One adapter covers twelve Javanese uses.** On held-out test rows, Indonesian to Javanese rises from 43.0 to 65.2
+  chrF++ and Javanese to Indonesian from 55.5 to 75.3. Speech-level classification (Ngoko, Krama and two more) rises
+  from 41.5% to 92.5%, and rewriting Ngoko as Krama from 30.1 to 76.5 chrF++. An untrained English to Indonesian
+  control stays at 48.3 against 48.2.
+- **The parent mistakes Javanese for Indonesian.** It names the language correctly on 14.5% of Javanese sentences. The
+  adapter reaches 99.2%.
+- **Task scores did not predict safety.** Two adapters within a point of each other on almost every task split on the
+  safety check. One kept content safety and lost 3.0 points of Indonesian capability. The other, trained at twice the
+  learning rate, dropped Javanese content-safe answers from 79.0% to 51.1%, mostly through broken answers.
+- **No adapter is cleared for use yet,** and no native speaker has read the outputs.
+
 ## How it works
 
 ```
@@ -136,7 +153,7 @@ Machines, setup details, CircuitKIT's separate environment and llama.cpp are in 
 |---|---|
 | `src/langsafe/` | The pipeline: data, generation, judging, statistics, circuits, repairs, quantisation, provenance |
 | `configs/` | `spec.yaml` (the frozen full run) and `development.yaml` (small integration run) |
-| `scripts/` | Entry points: `run_experiment.sh`, exports, release and audit tools |
+| `scripts/` | Entry points: `run_experiment.sh`, exports, release and audit tools, and the follow-up adapter scripts |
 | `notebooks/` | Reproduction notebook and a day-1 smoke test |
 | `space/` | Results explorer built from the aggregate reports |
 | `article/` | The article as Markdown |
