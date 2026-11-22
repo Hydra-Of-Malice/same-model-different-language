@@ -37,7 +37,7 @@ from urllib.request import urlopen
 BASE = "HydraOfMalice/tiny-aya-earth-langsafe-circuit-merge-0p5"
 BASE_REVISION = "ef47ebee4b9307bf23d728a171efd2b74e1dc789"
 CODE = "Hydra-Of-Malice/same-model-different-language"
-CODE_REVISION = "7c22537d4eca08be75d5466ec01b3ca6d0d0b8be"
+CODE_REVISION = "7c225377f59922bba5764f2a036d0d5e5bb021e7"
 DATA = "HydraOfMalice/tiny-aya-earth-langsafe-eval"
 DATA_REVISION = "af423e4a301c9265e1a112bf4478c9a6b51f20dd"
 SECOND_JUDGE_PROVIDER = "deepinfra"
