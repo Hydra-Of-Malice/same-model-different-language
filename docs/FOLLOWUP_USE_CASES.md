@@ -132,6 +132,110 @@ All runs start from the same pinned checkpoint and upload to one private reposit
 
 Expected total is under $20 of the available credits, including about $2 of judge calls.
 
+## Results of the expanded runs
+
+**22 November 2026.** Eight runs finished on one NVIDIA H200 each, in BF16, with greedy decoding and the default preamble for both arms. Adapters, aggregate metrics and predictions are in a private Hub repository. [Private runs](https://huggingface.co/PDGamerSG/tiny-aya-nusantara-adapters/tree/7029cf4df6ad0fe5453ce0c337855bdff523b3ea)
+
+The first plan put the H200 runs at L40S prices and four epochs at one. Training took 11.7 GPU-hours, about $59 at the listed $5 per hour, before the safety checks.
+
+| Run | Start | Training examples | Rank, layers | Learning rate | Validation chrF++ by epoch | Epoch kept | Minutes |
+|---|---|---:|---|---:|---|---:|---:|
+| `core-attention-r8` | Earth circuit merge | 2,500 | 8, attention | 1e-4 | 60.4, 63.3, 64.8, 64.4, 65.6, 65.6, 65.8, 65.6 | 7 | 18 |
+| `core-r64` | Earth circuit merge | 2,500 | 64, all | 1e-4 | 68.6, 68.9, 68.7, 67.4, 66.8, 66.2, 66.9, 66.9 | 2 | 40 |
+| `suite-r64` | Earth circuit merge | 26,272 | 64, all | 1e-4 | 69.0, 70.5, 70.1, 69.0 | 2 | 100 |
+| `suite-r64-lr2e-4` | Earth circuit merge | 26,272 | 64, all | 2e-4 | 69.2, 69.6, 69.2, 69.7 | 4 | 84 |
+| `suite-r128` | Earth circuit merge | 26,272 | 128, all | 1e-4 | 68.9, 69.5, 70.2, 69.5 | 3 | 97 |
+| `suite-global-r64` | Tiny Aya Global | 26,272 | 64, all | 1e-4 | 69.7, 69.9, 69.5, 69.5 | 2 | 94 |
+| `all-r64` | Earth circuit merge | 49,272 | 64, all | 1e-4 | 66.3, 64.5, 61.9 | 1 | 136 |
+| `all-global-r64` | Tiny Aya Global | 49,272 | 64, all | 1e-4 | 66.3, 64.2, 60.6 | 1 | 133 |
+
+The validation score is the mean chrF++ of the two Indonesian–Javanese directions on the NusaX validation split, and each run keeps its best epoch by it.
+
+### What the runs show
+
+Test scores, parent then adapter. Translation keys are chrF++, the rest accuracy. `triage_jav` counts a reply as right when both its language and its sentiment are right.
+
+| Test key | n | Parent | `core-r64` | `suite-r64` | `suite-r64-lr2e-4` | `suite-r128` | `all-r64` |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `ind_to_jav` | 400 | 43.0 | 64.3 | 66.7 | 66.0 | 65.2 | 64.4 |
+| `jav_to_ind` | 400 | 55.5 | 72.6 | 76.1 | 75.2 | 75.3 | 68.5 |
+| `eng_to_jav` | 400 | 32.1 | 41.9 | 42.1 | 41.7 | 42.6 | 38.9 |
+| `jav_to_eng` | 400 | 40.1 | 45.1 | 45.6 | 44.6 | 45.0 | 43.6 |
+| `eng_to_ind`, untrained control | 400 | 48.3 | 50.5 | 47.7 | 47.9 | 48.2 | 42.3 |
+| `senti_jav` | 400 | 73.8 | 82.8 | 93.2 | 93.0 | 93.0 | 91.8 |
+| `lid_jav` | 400 | 14.5 | — | 99.5 | 99.2 | 99.2 | 96.5 |
+| `triage_jav` | 400 | 0.0 | — | 93.0 | 91.8 | 93.2 | 79.5 |
+| `level_jav` | 429 | 41.5 | — | 89.3 | 94.2 | 92.5 | 81.1 |
+| `ind_to_krama` | 156 | 20.5 | — | 60.5 | 63.2 | 62.3 | 58.3 |
+| `ngoko_to_krama` | 156 | 30.1 | — | 73.7 | 76.4 | 76.5 | 72.6 |
+| `krama_to_ngoko` | 156 | 35.9 | — | 70.7 | 73.4 | 72.7 | 66.3 |
+| `ind_to_jav_tweets` | 398 | 40.7 | — | 58.9 | 57.3 | 57.6 | 57.9 |
+| `jav_to_ind_tweets` | 398 | 46.8 | — | 64.4 | 63.6 | 63.7 | 62.6 |
+| `topic_jav` | 400 | 61.5 | — | 88.8 | 92.5 | 93.2 | 85.0 |
+| `emotion_jav` | 400 | 47.8 | — | 87.5 | 90.5 | 91.5 | 48.2 |
+
+The parent column is from the suite jobs. Each job scores the parent again, and its scores differ by up to one point between jobs because the batches differ.
+
+- **The recipe roughly doubled the pilot's gain on the same data.** `core-r64` trains on NusaX alone, as the pilot did. It gains 21.2 and 17.2 chrF++ in the two Javanese directions. The first pilot adapter, scored on the same 400 rows in the same job, gains 10.4 and 8.2. On the 160 test rows no earlier run had scored, `core-r64` gains 21.7 and 16.6.
+- **Capacity mattered.** Rank 8 on the attention projections ended 3.9 and 2.7 chrF++ below rank 64 on all projections. Rank 128 and a doubled learning rate did not improve translation further.
+- **More Javanese data helped translation and did not cost the control.** The suite adds 2.4 and 3.5 chrF++ over `core-r64` on the NusaX test. English to Indonesian moves between −0.6 and −0.1 across the three suite runs.
+- **The parent mislabels Javanese as Indonesian.** It names the language correctly on 14.5% of Javanese sentences, and its triage replies are valid JSON every time with the wrong language every time. The adapters reach 99%.
+- **Starting from Tiny Aya Global changed little.** Global's parent is 4.5 chrF++ stronger into Javanese (47.5), and the tuned adapter ends at 66.9 and 76.5, within 0.4 of `suite-r64`.
+- **Adding nine more languages cost Javanese.** In the all-language runs the Javanese validation score fell every epoch (66.3, 64.5, 61.9), so the first epoch was kept. That adapter loses 6.0 chrF++ on the English to Indonesian control and had not yet learned the emotion task. It does serve the other languages: Indonesian to Sundanese 38 to 59 chrF++, to Minangkabau 43 to 71, to Toba Batak 8 to 35; sentiment from 42–70% to 86–92%; language identification from 0–5% to 91–98%. Those gains are on 200 test rows per key.
+
+### The adapter we carry forward
+
+The suite adapters differ by less than the validation sets can resolve, so we set the rule after the runs: the highest mean validation score across the eight task families at the epoch each run kept, and the higher NusaX validation score on a tie. `suite-r128` (78.5) and `suite-r64-lr2e-4` (78.4) lead, and the tie-break picks `suite-r128`. The test table above had been seen by then.
+
+| Use | Test key | n | Parent | `suite-r128` | Mean paired change, 95% CI |
+|---|---|---:|---:|---:|---|
+| Indonesian → Javanese | `ind_to_jav` | 400 | 43.0 | 65.2 | +21.0 to +24.0 |
+| Javanese → Indonesian | `jav_to_ind` | 400 | 55.5 | 75.3 | +19.0 to +22.0 |
+| English → Javanese | `eng_to_jav` | 400 | 32.1 | 42.6 | +9.2 to +11.4 |
+| Javanese → English | `jav_to_eng` | 400 | 40.1 | 45.0 | +4.2 to +6.3 |
+| English → Indonesian, control | `eng_to_ind` | 400 | 48.3 | 48.2 | −0.8 to +1.4 |
+| Tweets, Indonesian → Javanese | `ind_to_jav_tweets` | 398 | 40.7 | 57.6 | +15.5 to +18.2 |
+| Tweets, Javanese → Indonesian | `jav_to_ind_tweets` | 398 | 46.8 | 63.7 | +16.3 to +19.2 |
+| Indonesian → Javanese in Krama | `ind_to_krama` | 156 | 20.5 | 62.3 | +37.1 to +43.1 |
+| Rewrite Ngoko as Krama | `ngoko_to_krama` | 156 | 30.1 | 76.5 | +42.6 to +49.2 |
+| Rewrite Krama as Ngoko | `krama_to_ngoko` | 156 | 35.9 | 72.7 | +34.4 to +40.7 |
+| Name the speech level | `level_jav` | 429 | 41.5 | 92.5 | +45.9 to +55.9 |
+| Sentiment | `senti_jav` | 400 | 73.8 | 93.0 | +15.0 to +24.0 |
+| Topic of a paragraph | `topic_jav` | 400 | 61.5 | 93.2 | +26.8 to +36.8 |
+| Emotion of a paragraph | `emotion_jav` | 400 | 47.8 | 91.5 | +38.5 to +48.8 |
+| Tell Javanese from Indonesian | `lid_jav` | 400 | 14.5 | 99.2 | +81.2 to +88.2 |
+| Triage as JSON | `triage_jav` | 400 | 0.0 | 93.2 | — |
+
+For translation keys the interval is on the mean sentence-level chrF++ change, and the two score columns are corpus-level.
+
+- **Against published systems.** SacreBLEU on the NusaX test split is 38.0 into Javanese and 56.1 into Indonesian. IndoBARTv2, fine-tuned on the same 500 training rows, is reported at 39.97 and 50.64. Our adapter also trained on NusaTranslation tweets, so this is a reference point and the two were not run under matched conditions. [NusaX paper](https://arxiv.org/abs/2205.15960)
+- **Less Indonesian carried over.** Of 400 Indonesian to Javanese outputs, 141 from the parent were closer to the Indonesian source than to the Javanese reference. The adapter leaves 15. The parent returned the source sentence unchanged for 30 of 156 Ngoko to Krama rewrites, the adapter for none.
+- **Strength can be turned down.** At three quarters strength `suite-r64` scores 66.9 and 75.7 on the two NusaX directions against 66.7 and 76.1 at full strength. At half strength it scores 63.6 and 73.8.
+- **Speech-level accuracy is on our own split.** The Unggah-Ungguh paper reports 95.65% for a fine-tuned DistilBERT and 53.5% for GPT-4o on its split, which differs from ours.
+
+### Sample outputs
+
+Run locally on Apple MPS with `scripts/javanese_tools.py`, parent and `suite-r128` on the same prompts. No native speaker has checked them.
+
+| Request | Input | Parent | `suite-r128` |
+|---|---|---|---|
+| Indonesian → Javanese | Kamu makan apa hari ini? | Kula nggegirisi apa dina iki? | Kowe mangan apa dina iki? |
+| Indonesian → Javanese, Krama | Kamu makan apa hari ini? | Kula ngambeg apa ingkang kula santen ing dinten iki? | Sampeyan nedha menapa dinten menika? |
+| Indonesian → Javanese, Ngoko | Kamu makan apa hari ini? | Kula mangan apa dina iki? | Dak-mangan apa dina iki? |
+| Rewrite as Krama | Kowe arep lunga menyang ngendi? | Kula badhé lungkung nguntal kana endi? | Sampeyan badhe kesah dhateng pundi? |
+| Name the level | Panjenengan badhe tindak dhateng pundi? | Krama | Krama Alus |
+| Name the language | Aku arep tuku buku ing toko. | Indonesian | Javanese |
+
+The Ngoko row looks wrong to us in both columns: the request says "you", and both answers use a first-person form. It is the kind of error overlap scores miss.
+
+### What these results do not show
+
+- chrF++ and BLEU measure overlap with one reference. No native speaker has read these outputs. `predictions.jsonl` in each run folder is there for that review.
+- NusaX and NusaTranslation are public, so the parent may have seen them in pretraining.
+- Speech-level test sentences are short textbook and dictionary sentences. Krama in longer, real text is untested.
+- The triage task reuses NusaX rows. It shows the adapter can hold a JSON format across three fields, on one domain.
+- Each configuration ran once, with one seed. Differences of a point or less between suite runs are within what the 99-row validation set can resolve.
+
 ## Reproduction
 
 Run the split check without a GPU:
