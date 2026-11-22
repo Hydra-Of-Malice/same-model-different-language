@@ -9,6 +9,7 @@
 | [UPSTREAM.md](UPSTREAM.md) | Gaps we found in the Lexsi kits and how we worked around them |
 | [upstream_patches/](upstream_patches/README.md) | Six patches for the kits, with pull request texts |
 | [judge_checks/](judge_checks/README.md) | Aggregates behind the judge-agreement numbers (32B judges and Command A samples) |
+| [FOLLOWUP_USE_CASES.md](FOLLOWUP_USE_CASES.md) | Practical uses, research limits, and the Javanese translation training pilot |
 | [submission/abstract.md](submission/abstract.md) | The submission abstract |
 | [submission/roi.md](submission/roi.md) | Cost comparison: self-hosting Tiny Aya against closed-model APIs |
 | [REMOTE_NF4.md](REMOTE_NF4.md) | How the NF4 checks ran on a rented GPU |
