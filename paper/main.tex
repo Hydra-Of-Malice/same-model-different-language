@@ -33,6 +33,9 @@
 
 % Packages added for this paper.
 \usepackage{booktabs}
+\usepackage{array}
+% Paragraph columns set ragged right, so narrow cells do not stretch word spacing.
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \usepackage{multirow}
 \usepackage{graphicx}
 \usepackage{amsmath}
@@ -377,34 +380,32 @@ falls to 0.55 (parent 0.82), below the floor of 0.6. Task scores did not predict
 
 \begin{table}[t]
 \centering\footnotesize
-\setlength{\tabcolsep}{3pt}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{llrrrrrr}
+\setlength{\tabcolsep}{2pt}
+\resizebox{\ifdim\width>\columnwidth\columnwidth\else\width\fi}{!}{%
+\begin{tabular}{@{}lrrrrrr@{}}
 \toprule
-& & \multicolumn{4}{c}{Held-out prompts} & \multicolumn{2}{c}{Repair-split prompts} \\
-\cmidrule(lr){3-6}\cmidrule(lr){7-8}
-Change (points) & Pre. & $\times$1.0 & $\times$0.75 & $\times$0.5 & Replay & $\times$1.0 & $\times$0.5 \\
+& \multicolumn{4}{c}{Held-out prompts} & \multicolumn{2}{c@{}}{Repair split} \\
+\cmidrule(lr){2-5}\cmidrule(l){6-7}
+Change (points) & $\times$1.0 & $\times$0.75 & $\times$0.5 & Replay & $\times$1.0 & $\times$0.5 \\
 \midrule
-Jav.\ content-safe & def. & $-$2.8 & $+$3.4 & $+$4.0 & $-$5.7 & $-$3.3 & $+$2.4 \\
-Jav.\ content-safe & none & $-$2.8 & $+$2.3 & $+$1.7 & $+$2.3 & $-$4.9 & $+$8.9 \\
-Eng.\ content-safe & def. & $-$1.7 & $-$3.9 & $-$2.2 & $+$5.6 & $-$6.7 & $-$3.4 \\
-Eng.\ content-safe & none & $-$3.9 & $-$2.8 & $+$0.6 & $+$3.9 & $-$7.6 & $-$2.5 \\
-Jav.\ over-refusal & def. & $-$2.0 & $-$3.4 & $-$2.7 & $+$10.9 & $-$3.3 & $-$3.3 \\
-Eng.\ over-refusal & def. & $-$2.6 & $-$2.0 & $+$0.7 & $+$2.0 & $-$1.1 & $+$2.1 \\
-Jav.\ harmful refusal & def. & $-$3.4 & $-$2.3 & $+$4.5 & $+$9.7 & $+$5.7 & $+$8.9 \\
-Jav.\ harmful refusal & none & $-$12.5 & $-$10.2 & $-$1.7 & $-$5.7 & $-$0.8 & $+$4.1 \\
-Ind.\ Global-MMLU-Lite & def. & $-$3.0 & $-$2.8 & $-$1.0 & $-$1.8 & $-$3.0 & $-$1.0 \\
-Eng.\ Global-MMLU-Lite & def. & $-$1.0 & $-$1.8 & 0.0 & $-$1.0 & $-$1.0 & $-$0.2 \\
+Jav.\ content-safe & $-$2.8 & $+$3.4 & $+$4.0 & $-$5.7 & $-$3.3 & $+$2.4 \\
+Jav.\ content-safe$^\dagger$ & $-$2.8 & $+$2.3 & $+$1.7 & $+$2.3 & $-$4.9 & $+$8.9 \\
+Eng.\ content-safe & $-$1.7 & $-$3.9 & $-$2.2 & $+$5.6 & $-$6.7 & $-$3.4 \\
+Eng.\ content-safe$^\dagger$ & $-$3.9 & $-$2.8 & $+$0.6 & $+$3.9 & $-$7.6 & $-$2.5 \\
+Jav.\ over-refusal & $-$2.0 & $-$3.4 & $-$2.7 & $+$10.9 & $-$3.3 & $-$3.3 \\
+Eng.\ over-refusal & $-$2.6 & $-$2.0 & $+$0.7 & $+$2.0 & $-$1.1 & $+$2.1 \\
+Jav.\ harmful refusal & $-$3.4 & $-$2.3 & $+$4.5 & $+$9.7 & $+$5.7 & $+$8.9 \\
+Jav.\ harmful refusal$^\dagger$ & $-$12.5 & $-$10.2 & $-$1.7 & $-$5.7 & $-$0.8 & $+$4.1 \\
+Ind.\ capability & $-$3.0 & $-$2.8 & $-$1.0 & $-$1.8 & $-$3.0 & $-$1.0 \\
+Eng.\ capability & $-$1.0 & $-$1.8 & 0.0 & $-$1.0 & $-$1.0 & $-$0.2 \\
 \midrule
-All gates passed & & no & no & yes & no & no & no \\
-Task composite (test) & & 79.6 & 79.6 & 77.0 & 79.5 & 79.6 & 77.0 \\
+All gates passed & no & no & yes & no & no & no \\
+Task composite & 79.6 & 79.6 & 77.0 & 79.5 & 79.6 & 77.0 \\
 \bottomrule
 \end{tabular}}
-\caption{Adapter minus parent (points): \run{suite-r128} at three strengths and the replay adapter at full strength
-on the held-out Javanese and English prompts, and \run{suite-r128} again on the repair-split prompts it never trained
-on. Each column is its own job with its own parent answers; intervals are in Tables~\ref{tab:strength-safety-full}
-and~\ref{tab:repair-safety-full}. Last row: mean over the eight task families on the test rows (parent
-43.1).}
+\caption{Adapter minus parent (points); each column is its own job. Repair split: prompts \run{suite-r128} never
+trained on. $^\dagger$No preamble (others: default). Capability: Global-MMLU-Lite. Intervals: Tables~\ref{tab:strength-safety-full}
+and~\ref{tab:repair-safety-full}. Composite: eight-family test mean (parent 43.1).}
 \label{tab:strength}
 \end{table}
 
@@ -446,13 +447,12 @@ and~\ref{app:history}).
 
 \paragraph{Cost.} The main study ran on one laptop RTX 4060 (8\,GB), about 93 hours from first stage to last, plus
 about \$15 of Hugging Face credits for rented GPUs and paid judge calls, the largest being the full Command~A run
-(about \$61 at list price). The follow-up's eight expanded runs took 11.7 H200 GPU-hours (about
-\$59), and the follow-up had used about \$72 of Hugging Face Jobs compute at the time of writing
-(Appendix~\ref{app:compute}).
+(about \$61 at list price). The adapter study used 32.2 H200 GPU-hours of Hugging Face Jobs; with smaller jobs and
+judge calls, its account spent \$170.35 in November (Appendix~\ref{app:compute}).
 
 \paragraph{With more credits.} Measurement comes first (Appendix~\ref{app:credits}): native reviewers;
 Command~A with the report's rubric wording on every model; all 315 MultiJail items in both conditions, expected to
-narrow gap intervals by about a quarter (from 4.7--11.4 to 3.5--8.5 points wide); all 10 MultiJail languages at full
+narrow gap intervals by about a quarter; all 10 MultiJail languages at full
 precision; repairs for Fire and Water; a circuit-restricted LoRA distilling Global's judged answers, expected to leave
 fewer broken Javanese answers; and a fresh adapter safety check. We estimate the main-study steps at about 300 laptop
 GPU hours and about \$470 of judge calls; expectations are forecasts, not results.\label{endmain}
@@ -536,6 +536,17 @@ XSTest, Global-MMLU-Lite, NusaX, NusaWrites and Unggah-Ungguh released the data 
 % =====================================================================================================
 \appendix
 % =====================================================================================================
+% The appendix is mostly tables: let a page take more floats, and keep half-empty float-only pages out.
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\dbltopfraction}{0.9}
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.08}
+\renewcommand{\floatpagefraction}{0.75}
+\renewcommand{\dblfloatpagefraction}{0.75}
+\setcounter{topnumber}{4}
+\setcounter{dbltopnumber}{4}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{6}
 
 \section{Submission Details}\label{app:submission}
 
@@ -548,7 +559,7 @@ Code-mixed prompts were tested only in the small development run on Fire (Append
 adapter study (\S\ref{sec:adapt}) is an extension of the entry, not a further problem statement.
 
 \paragraph{Artifacts.} No released file contains a model's answer to a harmful prompt.
-\begin{itemize}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}
+\begin{itemize}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}\raggedright
 \item \textbf{Models collection} (repair checkpoints):
   \url{https://huggingface.co/collections/HydraOfMalice/same-model-different-language-repair-checkpoints-6af426d1cac578d29e4805e5}.
   It holds the selected repair, \nolinkurl{HydraOfMalice/tiny-aya-earth-langsafe-circuit-merge-0p5} (FP16), the same
@@ -600,10 +611,6 @@ and~\ref{app:licences}).
 \paragraph{Team.} Aditya Arnav (GitHub: Hydra-Of-Malice; Hugging Face: HydraOfMalice), Pallab Das (GitHub and
 Hugging Face: PDGamerSG) and Sriram (GitHub: Genziitian; Hugging Face: sriramdevs).
 
-\paragraph{Author contributions.} The hackathon article lists Aditya Arnav and Pallab Das as its team and states that
-both designed the study, built the pipeline, ran the experiments and wrote the article.
-\textbf{[AUTHOR CONTRIBUTIONS PLACEHOLDER: the split of work among the three authors, including Sriram's part, on the
-main study, the adapter follow-up and this paper.]}
 
 \section{Lexsi Kits: Features, Omissions and Gaps}\label{app:kits}
 
@@ -615,7 +622,7 @@ AuditKIT's run records carry our refusal scorers only, so the content-safe rate 
 \begin{table*}[t]
 \centering\small
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{p{2.2cm}p{2.9cm}p{5.1cm}p{4.8cm}}
+\begin{tabular}{L{2.2cm}L{2.9cm}L{5.1cm}L{4.8cm}}
 \toprule
 Kit (version, commit) & Used for & Features used & Left out, and why \\
 \midrule
@@ -644,7 +651,7 @@ Its training-based Harden methods are outside a no-retraining track \\
 \begin{table*}[t]
 \centering\small
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{p{1.8cm}p{5.3cm}p{4.9cm}p{3.0cm}}
+\begin{tabular}{L{1.8cm}L{5.3cm}L{4.9cm}L{3.0cm}}
 \toprule
 Kit & Gap & What we did & Upstream \\
 \midrule
@@ -681,7 +688,7 @@ pair, and the planning checks used Cohere's official Q4\_K\_M GGUF files.
 \begin{table*}[t]
 \centering\small
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{p{4.6cm}p{6.3cm}p{4.1cm}}
+\begin{tabular}{L{4.6cm}L{6.3cm}L{4.1cm}}
 \toprule
 Model & Role & Licence \\
 \midrule
@@ -716,7 +723,7 @@ in five of the seven languages.
 \begin{table*}[t]
 \centering\small
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{p{4.2cm}p{5.6cm}p{2.9cm}p{2.0cm}}
+\begin{tabular}{L{4.2cm}L{5.6cm}L{2.9cm}L{2.0cm}}
 \toprule
 Dataset & Use & Languages & Licence \\
 \midrule
@@ -1207,7 +1214,7 @@ English-to-Indonesian pairs and lost 2.47 and 1.94 points in the Javanese direct
 \begin{table*}[t]
 \centering\small
 \setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{lllrlrp{4.3cm}rr}
+\begin{tabular}{lllrlrL{4.3cm}rr}
 \toprule
 Run & Start & Tasks & Examples & Rank, layers & LR & Validation chrF++ by epoch & Kept & Min. \\
 \midrule
@@ -1233,7 +1240,7 @@ split. Training took 11.7 GPU-hours in total.}
 \begin{table*}[t]
 \centering\small
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{rp{3.0cm}p{5.2cm}p{4.2cm}p{1.7cm}}
+\begin{tabular}{rL{3.0cm}L{5.2cm}L{4.2cm}L{1.7cm}}
 \toprule
 \# & Use case & Evidence of a gap & Open data & Status \\
 \midrule
@@ -1269,7 +1276,7 @@ NusaX test split were ruled out as training data.}
 \begin{table*}[t]
 \centering\small
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{p{2.8cm}p{3.4cm}p{4.2cm}p{4.0cm}}
+\begin{tabular}{L{2.8cm}L{3.4cm}L{4.2cm}L{4.0cm}}
 \toprule
 Request & Input & Parent & \run{suite-r128} \\
 \midrule
@@ -1530,7 +1537,6 @@ corpora, so the comparison is not matched. Regional languages are in Table~\ref{
 \label{tab:nllb}
 \end{table*}
 
-\clearpage
 \section{Prompt Templates}\label{app:prompts}
 
 \noindent\textbf{Refusal rubric (system prompt).}
@@ -1604,7 +1610,7 @@ JSON object with three string fields; one Markdown code fence is tolerated.
 
 \begin{table*}[t]
 \centering\small
-\begin{tabular}{p{3.0cm}p{12.0cm}}
+\begin{tabular}{L{3.0cm}L{12.0cm}}
 \toprule
 Component & Setting \\
 \midrule
@@ -1635,7 +1641,7 @@ AuditKIT 1.1.3 & Evaluation on precomputed outputs, temperature 0, explicit vari
 
 \begin{table*}[t]
 \centering\small
-\begin{tabular}{p{4.0cm}p{11.0cm}}
+\begin{tabular}{L{4.0cm}L{11.0cm}}
 \toprule
 Setting & Value \\
 \midrule
@@ -1709,7 +1715,7 @@ forecast for these.
 \begin{table*}[t]
 \centering\small
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{p{1.6cm}p{2.8cm}p{2.6cm}p{2.4cm}p{2.3cm}p{3.0cm}}
+\begin{tabular}{L{1.6cm}L{2.8cm}L{2.6cm}L{2.4cm}L{2.3cm}L{3.0cm}}
 \toprule
 Step & Now & With more credits & What it would settle & Before & Expected after \\
 \midrule
@@ -1750,10 +1756,9 @@ forecast, not a result. --: no current value.}
 \label{tab:credits}
 \end{table*}
 
-\clearpage
 \section{Reproducibility Checklist and Commands}\label{app:repro}
 
-\begin{itemize}\setlength{\itemsep}{1pt}
+\begin{itemize}\setlength{\itemsep}{1pt}\raggedright
 \item \textbf{Pre-registration.} Specification and amendments with dates; its hash is stamped into every run's
   ledger entry, which is hash-chained.
 \item \textbf{Splits.} Group-aware 60/40 split, seed 20261103, leakage check; adapter data from official splits
@@ -1773,7 +1778,7 @@ forecast, not a result. --: no current value.}
 
 \begin{table*}[t]
 \centering\small
-\begin{tabular}{p{3.8cm}p{11.2cm}}
+\begin{tabular}{L{3.8cm}L{11.2cm}}
 \toprule
 Artifact & Repository, then revision or version \\
 \midrule

@@ -14,9 +14,8 @@ follows the hackathon's recommended write-up sections; everything that did not f
 | `make_figure.py` | Draws `adapter_tradeoff.pdf` |
 | `main.pdf` | Last local build |
 
-Current build: 31 pages in all. The main text (sections 1 to 6) ends on page 6, about a dozen lines before the
-bottom of the right column; Limitations starts on page 6. Limitations and the Ethics Statement do not count toward
-the page limit. The EMNLP template itself states only the review limit (8 pages for long papers); the 6-page target
+Current build: 29 pages in all. The main text (sections 1 to 6) ends at the bottom of page 6, and Limitations starts
+on page 7. Limitations and the Ethics Statement do not count toward the page limit. The EMNLP template itself states only the review limit (8 pages for long papers); the 6-page target
 is the hackathon's.
 
 ## Structure
@@ -31,7 +30,7 @@ is the hackathon's.
 | 4 Results | 4.1 gap, 4.2 harm versus breakdown (attack success rate), 4.3 repairs, 4.4 circuits, 4.5 4-bit | Results, before and after, CIs, findings, quantised model |
 | 5 Extension | Javanese task adapter: setup, task gains, safety check, two fixes | Adapter follow-up (an extension, no problem number) |
 | 6 Conclusion | Conclusion, what did not work, cost, with more credits | What didn't work, cost, with more credits |
-| Appendix A | Tracks, artifacts, documentation and reproduction, work done outside the hackathon, team, author contributions | Artifacts, reproduction, declaration, teammates, contributions |
+| Appendix A | Tracks, artifacts, documentation and reproduction, work done outside the hackathon, team | Artifacts, reproduction, declaration, teammates |
 | Appendix B | Kit features, omissions and gaps (Tables 4 and 5) | Repos in detail |
 | Appendix C | Models, datasets, licences, CuratorKIT filtering, translation (Tables 6 to 8) | Models and datasets in detail |
 | Appendix D | Thesis, development run, planning checks, amendments | Pre-registered hypotheses |
@@ -53,6 +52,12 @@ Tectonic runs BibTeX itself and writes only `main.pdf`. It is XeTeX-based and al
 `\ifdefined\XeTeXversion\PassOptionsToPackage{xetex}{hyperref}\fi`, that picks the right hyperref driver. It does
 nothing under pdfLaTeX. The two "Wrong driver" hyperref warnings and the `inputenc` warning in the log are harmless.
 The build has no undefined references or citations and no overfull boxes.
+
+Layout choices: paragraph columns in tables use the `L{width}` column type (ragged right, from the `array` package),
+so narrow cells do not stretch word spacing; the appendix raises the float limits (`\topfraction`,
+`\floatpagefraction` and the counters after `\appendix`) so that tables share pages with text instead of sitting
+alone on half-empty pages; and the artifact and reproducibility lists are set ragged right because of their long
+URLs.
 
 **Locally with pdfLaTeX:**
 
@@ -80,18 +85,13 @@ The file is set up as the final, non-anonymous version:
 - Three authors, in this order, each with an e-mail address: Aditya Arnav, Pallab Das and Sriram. No affiliations
   were given, so the author block has none.
 
-An anonymous review version would need more than the two switches above: Appendix A (artifact URLs, team, author
-contributions, declaration) and the pull requests in Table 5 identify us without the `\anon{...}` macro.
+An anonymous review version would need more than the two switches above: Appendix A (artifact URLs, team, declaration) and the pull requests in Table 5 identify us without the `\anon{...}` macro.
 
 ## Still to fill in
 
-Line numbers are for the current `main.tex`. `grep -n '\\pending{\|PLACEHOLDER' main.tex` lists them.
-
-| Line | Where | What is missing |
-|---|---|---|
-| 605 | Appendix A, author contributions | The split of work among the three authors, including Sriram's part; the repository records none |
-
-Every result is filled in; the author contributions statement is the only placeholder left. Every placeholder uses `\newcommand{\pending}[1]{\textbf{[PENDING: #1]}}` or a bold `[... PLACEHOLDER ...]`.
+Nothing. `grep -n '\\pending{\|PLACEHOLDER' main.tex` finds nothing. The author contributions
+paragraph was removed, because the split of work among the three authors is not recorded anywhere; EMNLP does not
+require one. To add it back, put a `\paragraph{Author contributions.}` after the Team paragraph in Appendix A.
 
 ## Where the numbers come from
 
@@ -105,7 +105,7 @@ Every number in the paper is copied from these files; none is re-derived or roun
 | Kits, licences, with more credits, reproduction, declaration, team (Appendices A to C, K) | `article/README.md` sections 2 to 6, 8 to 10 and 12, `README.md`, `docs/submission/checklist.md` (hackathon dates) |
 | Cost of serving (Appendix J) | `docs/submission/roi.md` and `article/README.md` section 7.9 |
 | Method details, prompts, pins and hashes | `scripts/nusantara_adapter.py`, `scripts/adapter_safety_check.py`, `scripts/translation_baseline.py`, `scripts/javanese_tools.py`, `src/langsafe/judge/llm_judge.py` |
-| Follow-up spend to date (about $72 of Hugging Face Jobs, about $1 of inference) | Reported by the team; the "Run plan" table and the "under $20" estimate in the follow-up notes are stale planning text and are not used |
+| Follow-up spend ($170.35 in November: 32.18 H200-hours of Jobs, smaller jobs and router judge calls) | `docs/FOLLOWUP_USE_CASES.md`, "Compute and cost", read from the account's billing page on 23 November |
 | Author block (three authors, e-mails, no affiliations) | Supplied by the authors |
 
 ## Open checks before submission
@@ -113,8 +113,6 @@ Every number in the paper is copied from these files; none is re-derived or roun
 - Appendix A states that nothing was done before or outside the hackathon (1 to 24 November 2026), and that the 32B
   and Command A re-judging (19 and 20 November) and the adapter study (22 and 23 November) were done in the second
   round, after the 15 November first-round deadline.
-- The author contributions statement quotes the article, which lists two team members; Sriram's part is a
-  placeholder.
 - The 0.09 and 0.22 chrF figures for English to Javanese are quoted from the follow-up notes' reading of the Tiny Aya
   report and were not re-checked against the report.
 - No native speaker has reviewed the translated prompts, the judges' labels or the adapter outputs; the paper says so
