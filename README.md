@@ -181,7 +181,7 @@ Machines, setup details, CircuitKIT's separate environment and llama.cpp are in 
 
 - **Aditya Arnav**: GitHub [Hydra-Of-Malice](https://github.com/Hydra-Of-Malice), Hugging Face [HydraOfMalice](https://huggingface.co/HydraOfMalice)
 - **Pallab Das**: GitHub [PDGamerSG](https://github.com/PDGamerSG), Hugging Face [PDGamerSG](https://huggingface.co/PDGamerSG)
-- **Sriram**
+- **Sriram**: GitHub [Genziitian](https://github.com/Genziitian), Hugging Face [sriramdevs](https://huggingface.co/sriramdevs)
 
 ## Licence
 

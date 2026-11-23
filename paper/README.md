@@ -89,12 +89,9 @@ Line numbers are for the current `main.tex`. `grep -n '\\pending{\|PLACEHOLDER' 
 
 | Line | Where | What is missing |
 |---|---|---|
-| 416 | Section 5, "Two fixes" (main text) | `\pending{repair-split confirmation at strength 0.5 and 1.0}`: the result of the safety check of `suite-r128` on the main study's repair-split prompts at strength 0.5 and 1.0. The main text has about a dozen lines of room for it |
-| 1638 | Appendix J, compute | `\pending{GPU-hours and cost of the final round, and the total}` |
-| 587 | Appendix A, team | Sriram's GitHub and Hugging Face handles (not recorded in the repository) |
-| 591 | Appendix A, author contributions | The split of work among the three authors, including Sriram's part; the repository records none |
+| 605 | Appendix A, author contributions | The split of work among the three authors, including Sriram's part; the repository records none |
 
-Every placeholder uses `\newcommand{\pending}[1]{\textbf{[PENDING: #1]}}` or a bold `[... PLACEHOLDER ...]`.
+Every result is filled in; the author contributions statement is the only placeholder left. Every placeholder uses `\newcommand{\pending}[1]{\textbf{[PENDING: #1]}}` or a bold `[... PLACEHOLDER ...]`.
 
 ## Where the numbers come from
 
