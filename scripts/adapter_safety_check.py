@@ -132,6 +132,9 @@ def main() -> None:
     parser.add_argument("--adapter-scale", type=float, default=1.0,
                         help="Check the adapter at this strength, between 0 and 1")
     parser.add_argument("--languages", default="jv,en", help="Safety languages from the held-out prompts")
+    parser.add_argument("--split", choices=("heldout", "repair"), default="heldout",
+                        help="Prompt split. The repair split confirms a choice made on the held-out prompts, for an "
+                             "adapter that never trained on it")
     parser.add_argument("--capability-languages", default="id,en", help="Global-MMLU-Lite languages")
     parser.add_argument("--limit", type=int, help="Prompts per language and kind, for a small check")
     parser.add_argument("--batch-size", type=int, default=16)
@@ -170,9 +173,9 @@ def main() -> None:
     check_router(spec)
 
     languages = set(filter(None, args.languages.split(",")))
-    heldout = Path(hf_hub_download(DATA, "data/heldout.jsonl", repo_type="dataset", revision=DATA_REVISION))
-    prompts = filter_prompts(heldout.read_text(encoding="utf-8").splitlines(), languages)
-    (run / "data" / "heldout.jsonl").write_text("\n".join(prompts) + "\n", encoding="utf-8")
+    source = Path(hf_hub_download(DATA, f"data/{args.split}.jsonl", repo_type="dataset", revision=DATA_REVISION))
+    prompts = filter_prompts(source.read_text(encoding="utf-8").splitlines(), languages)
+    (run / "data" / f"{args.split}.jsonl").write_text("\n".join(prompts) + "\n", encoding="utf-8")
     parent = snapshot_download(args.base, revision=args.base_revision, local_dir=work / "models" / "parent")
     pattern = f"{args.adapter_path.strip('/')}/adapter_*" if args.adapter_path else "adapter_*"
     adapter = Path(snapshot_download(args.adapter_repo, revision=args.adapter_revision, allow_patterns=[pattern],
@@ -200,12 +203,12 @@ def main() -> None:
     batch = ["--batch-size", str(args.batch_size)]
     models = {"parent": ["--model", parent], "adapter": ["--model", parent, "--adapter", str(adapter)]}
     for tag in TAGS:
-        pipeline("generate", "--family", "earth", "--tag", tag, *models[tag], *batch, *limit)
+        pipeline("generate", "--family", "earth", "--tag", tag, "--split", args.split, *models[tag], *batch, *limit)
     for tag in TAGS:
         pipeline("capability", "--tag", tag, *models[tag], "--languages", args.capability_languages,
                  "--preamble", "default", "--batch-size", "8", *limit)
     for tag in TAGS:
-        pipeline("judge", "--tag", tag, "--judges", "router")
+        pipeline("judge", "--tag", tag, "--judges", "router", "--split", args.split)
 
     sys.path.insert(0, str(code / "src"))
     from langsafe.config import spec_digest
@@ -240,7 +243,7 @@ def main() -> None:
         "adapter": {"repo": args.adapter_repo, "revision": args.adapter_revision, "path": args.adapter_path,
                     "scale": args.adapter_scale},
         "code": {"repository": CODE, "revision": args.code_revision, "spec_digest": spec_digest(spec)},
-        "data": {"repository": DATA, "revision": DATA_REVISION, "languages": sorted(languages),
+        "data": {"repository": DATA, "revision": DATA_REVISION, "split": args.split, "languages": sorted(languages),
                  "prompts": len(prompts), "limit_per_language_and_kind": args.limit},
         "judges": [judge["model"] for judge in spec["judging"]["judges"]],
         "thresholds": {key: thresholds[key] for key in ("over_refusal_increase_max", "capability_drop_max")},

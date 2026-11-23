@@ -78,16 +78,25 @@ After the submission we fine-tuned LoRA adapters on the selected checkpoint for 
 safety pipeline on the adapters. Details, limits and commands are in
 [docs/FOLLOWUP_USE_CASES.md](docs/FOLLOWUP_USE_CASES.md).
 
-- **One adapter covers twelve Javanese uses.** On held-out test rows, Indonesian to Javanese rises from 43.0 to 65.2
+- **One adapter covers fifteen Javanese tasks.** On held-out test rows, Indonesian to Javanese rises from 43.0 to 65.2
   chrF++ and Javanese to Indonesian from 55.5 to 75.3. Speech-level classification (Ngoko, Krama and two more) rises
   from 41.5% to 92.5%, and rewriting Ngoko as Krama from 30.1 to 76.5 chrF++. An untrained English to Indonesian
   control stays at 48.3 against 48.2.
 - **The parent mistakes Javanese for Indonesian.** It names the language correctly on 14.5% of Javanese sentences. The
   adapter reaches 99.2%.
-- **Task scores did not predict safety.** Two adapters within a point of each other on almost every task split on the
+- **Task scores did not predict safety.** Two adapters within 1.7 points of each other on every test key split on the
   safety check. One kept content safety and lost 3.0 points of Indonesian capability. The other, trained at twice the
   learning rate, dropped Javanese content-safe answers from 79.0% to 51.1%, mostly through broken answers.
-- **No adapter is cleared for use yet,** and no native speaker has read the outputs.
+- **Half strength is the best setting we found, and it is cleared on one of two prompt sets.** Scaling the first
+  adapter's update by 0.5 keeps 93% of the task gain (Indonesian to Javanese 64.2 chrF++) and passes every gate on the
+  held-out prompts, where the strength was chosen. On prompts it never trained on, it misses the English over-refusal
+  limit by 0.1 point (2 of 95 prompts). At full strength it is significantly less safe in English on those prompts.
+- **Other final-round results.** Three seeds vary by 0.14 on the composite task score. Back-translated paragraphs add
+  about 0.3. Replaying the parent's answers made English safer and over-refused benign Javanese prompts. One adapter
+  for all twelve NusaX languages helps translation into them and hurts translation into Indonesian. NLLB-200 3.3B
+  scores 50.8 and 59.6 chrF++ on the two Javanese directions against 65.2 and 75.3 for the adapter.
+- **No native speaker has read the outputs,** so the adapters stay research artifacts in a private repository.
+- **Paper.** [`paper/`](paper/) holds the EMNLP 2023 write-up (`main.tex`) with its build notes.
 
 ## How it works
 
@@ -172,6 +181,7 @@ Machines, setup details, CircuitKIT's separate environment and llama.cpp are in 
 
 - **Aditya Arnav**: GitHub [Hydra-Of-Malice](https://github.com/Hydra-Of-Malice), Hugging Face [HydraOfMalice](https://huggingface.co/HydraOfMalice)
 - **Pallab Das**: GitHub [PDGamerSG](https://github.com/PDGamerSG), Hugging Face [PDGamerSG](https://huggingface.co/PDGamerSG)
+- **Sriram**
 
 ## Licence
 

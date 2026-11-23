@@ -36,6 +36,22 @@ Everything except the private run outputs is in this repo or public on Hugging F
 - **Aditya:** check the billing page (D14), send the mentor one-pager (D15), the organiser ticket (D16), review and
   deploy the Space (D10), and submit the form (D17).
 
+## 23 November 2026
+- **Morning** **The final round is done, and the paper is written.**
+  - `suite-r128` at half strength keeps 93% of its task gain and passes every gate on the held-out prompts. On the
+    repair-split prompts, which it never trained on, it misses the English over-refusal limit by 0.1 point (2 of 95
+    prompts). At full strength it is significantly less safe in English on those prompts (−6.7 and −7.6 points).
+  - Replaying the parent's answers made English safer and over-refused benign Javanese prompts (+10.9 points).
+  - Three seeds vary by 0.14 on the composite task score; back-translation adds about 0.3. One adapter for all twelve
+    NusaX languages helps translation into them and hurts translation into Indonesian. NLLB-200 3.3B on the same rows
+    scores 50.8 and 59.6 chrF++ on the two Javanese directions against 65.2 and 75.3 for the adapter.
+  - New scripts: `scripts/adapter_eval.py` scores an adapter at several strengths; `adapter_safety_check.py` gains
+    `--split repair`.
+  - Spend on the PDGamerSG account in November: $170.35 ($160.92 of H200 jobs). About $21 of credits remain.
+  - `paper/` holds the EMNLP 2023 paper: 6 pages of main text in the hackathon's recommended sections, the rest in the
+    appendix, with Aditya Arnav, Pallab Das and Sriram as authors. Results and tables:
+    [FOLLOWUP_USE_CASES.md](FOLLOWUP_USE_CASES.md).
+
 ## 22 November 2026
 - **Night** **Eight adapter runs and two safety checks are done, and the follow-up is on `main`.**
   - `suite-r128`, trained on about 26,000 Javanese examples, takes Indonesian to Javanese from 43.0 to 65.2 chrF++ and

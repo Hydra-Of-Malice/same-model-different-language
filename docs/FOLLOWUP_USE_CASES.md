@@ -105,7 +105,7 @@ English to Indonesian stays untrained in every run and is scored as the control.
 
 **Leakage guards.** A training or validation row is dropped when its normalized text, in any language, also appears in a later split of any loaded source. NusaWrites reuses text across its tasks, and the guard drops 202 of its training examples. The two pilot runs scored 240 of the 400 NusaX test rows, so every report also gives the metrics on the 160 rows nothing has scored before.
 
-**Recipe.** The pilot trained 1.9 million parameters on 320 examples. The new defaults follow the strongest evidence we found, a study that fine-tuned Tiny Aya Global for translation: rank 64 on all seven projections, where rank 4 scored 8 to 14 COMET points lower. Learning rate 1e-4 with 5% warm-up and cosine decay, weight decay 0.01, dropout 0.05, batches capped at 6,000 padded tokens, and the epoch chosen by mean validation chrF++ on the two Indonesian–Javanese directions. `--scales 0.5,0.75` also scores the adapter at reduced strength, which costs no training and is the cheapest lever if the safety check below fails. [AfriScience-MT](https://arxiv.org/abs/2605.29741) · [LoRA Learns Less and Forgets Less](https://arxiv.org/abs/2405.09673) · [PEFT adapter scaling](https://huggingface.co/docs/peft/package_reference/helpers)
+**Recipe.** The pilot trained 1.9 million parameters on 320 examples. The new defaults follow the strongest evidence we found, a study that fine-tuned Tiny Aya Global for translation: rank 64 on all seven projections, where rank 4 scored 8 to 14 COMET points lower. Learning rate 1e-4 with 5% warm-up and cosine decay, weight decay 0.01, dropout 0.05, batches capped at 6,000 padded tokens (the H200 runs below used up to 16 examples and 12,000 padded tokens per batch with no accumulation, the same tokens per optimiser step), and the epoch chosen by mean validation chrF++ on the two Indonesian–Javanese directions. `--scales 0.5,0.75` also scores the adapter at reduced strength, which costs no training and is the cheapest lever if the safety check below fails. [AfriScience-MT](https://arxiv.org/abs/2605.29741) · [LoRA Learns Less and Forgets Less](https://arxiv.org/abs/2405.09673) · [PEFT adapter scaling](https://huggingface.co/docs/peft/package_reference/helpers)
 
 Published reference points on the NusaX-MT test split, SacreBLEU, for models fine-tuned on the same 500 training rows: IndoBARTv2 39.97 into Javanese and 50.64 into Indonesian. The script reports BLEU beside chrF++ so the two can be set side by side. [NusaX paper](https://arxiv.org/abs/2205.15960)
 
@@ -117,20 +117,20 @@ The script fetches this repository at a pinned commit and runs the frozen pipeli
 
 Indonesian has no safety prompts in this project, so Indonesian is covered for capability only.
 
-## Run plan
+## Runs
 
-All runs start from the same pinned checkpoint and upload to one private repository, one folder per run. Prices are the listed Hugging Face Jobs rates on 22 November: L40S (48 GB) $1.80 per hour, A10G large $1.50.
+All runs start from a pinned checkpoint and upload to one private repository, one folder per run. Each run answers one question.
 
-| Run | Flags | Training examples | Question it answers |
-|---|---|---:|---|
-| `probe` | `--train-rows 40 --epochs 1 --eval-rows 8` | about 500 | Does the script run on CUDA, and how much memory does a batch need? |
-| `core-r64` | defaults, `--epochs 8`, `--compare-adapter`, `--scales 0.5,0.75` | 2,500 | How far do the recipe and the full split move the pilot's numbers? |
-| `core-attention-r8` | `--modules attention --rank 8 --epochs 8` | 2,500 | How much of that is capacity, how much is training length? |
-| `suite-r64` | `--triage jav --levels --tweets --paragraphs --lid ind,jav --epochs 3` | about 26,000 | Does one adapter serve every Javanese use case, and does the extra data help or hurt NusaX translation? |
-| `regional-r64` | `--regional --epochs 3` | about 27,000 | Do the other nine languages gain, and does mixing them cost Javanese? |
-| safety check | on the adapter chosen by validation score | — | Is the chosen adapter still as safe and as capable as its parent? |
+| Run | Question it answers |
+|---|---|
+| `core-r64`, `core-attention-r8` | How far do the recipe and the full split move the pilot's numbers, and how much of that is capacity? |
+| `suite-r64`, `suite-r64-lr2e-4`, `suite-r128` | Does one adapter serve every Javanese use case, and does the extra data help or hurt NusaX translation? |
+| `suite-global-r64` | Does starting from Tiny Aya Global instead of the repaired checkpoint matter? |
+| `all-r64`, `all-global-r64` | Do the other nine NusaX languages gain, and does mixing them cost Javanese? |
+| safety checks | Is an adapter still as safe and as capable as its parent? |
+| final round | Do composite selection, back-translation, replay of parent answers or reduced strength fix the capability loss, and how much do seeds move the scores? |
 
-Expected total is under $20 of the available credits, including about $2 of judge calls.
+The first plan priced the runs on an L40S at one epoch each. They ran on an H200 at $5 per hour for up to eight epochs, so the cost is several times that plan. Actual spend is under [Compute and cost](#compute-and-cost).
 
 ## Results of the expanded runs
 
@@ -176,8 +176,8 @@ Test scores, parent then adapter. Translation keys are chrF++, the rest accuracy
 
 The parent column is from the suite jobs. Each job scores the parent again, and its scores differ by up to one point between jobs because the batches differ.
 
-- **The recipe roughly doubled the pilot's gain on the same data.** `core-r64` trains on NusaX alone, as the pilot did. It gains 21.2 and 17.2 chrF++ in the two Javanese directions. The first pilot adapter, scored on the same 400 rows in the same job, gains 10.4 and 8.2. On the 160 test rows no earlier run had scored, `core-r64` gains 21.7 and 16.6.
-- **Capacity mattered.** Rank 8 on the attention projections ended 3.9 and 2.7 chrF++ below rank 64 on all projections. Rank 128 and a doubled learning rate did not improve translation further.
+- **The recipe roughly doubled the pilot's gain on the same data.** `core-r64` trains on NusaX alone, as the pilot did. It gains 21.2 and 17.2 chrF++ in the two Javanese directions over the parent scored in its own job (43.1 and 55.5). The first pilot adapter, scored on the same 400 rows in the same job, gains 10.4 and 8.2. On the 160 test rows no earlier run had scored, `core-r64` gains 21.7 and 16.6.
+- **Capacity mattered.** Rank 8 on the attention projections scored 60.4 and 69.9 on the test rows, 3.9 and 2.7 chrF++ below rank 64 on all projections. Rank 128 and a doubled learning rate did not improve translation further.
 - **More Javanese data helped translation and did not cost the control.** The suite adds 2.4 and 3.5 chrF++ over `core-r64` on the NusaX test. English to Indonesian moves between −0.6 and −0.1 across the three suite runs.
 - **The parent mislabels Javanese as Indonesian.** It names the language correctly on 14.5% of Javanese sentences, and its triage replies are valid JSON every time with the wrong language every time. The adapters reach 99%.
 - **Starting from Tiny Aya Global changed little.** Global's parent is 4.5 chrF++ stronger into Javanese (47.5), and the tuned adapter ends at 66.9 and 76.5, within 0.4 of `suite-r64`.
@@ -232,10 +232,142 @@ Adapter minus parent, in points, with the paired 95% interval. Content-safe is t
 
 - **`suite-r128` passes the safety gates and misses the capability gate.** No content-safe interval excludes zero and over-refusal falls. Indonesian accuracy drops 3.0 points against a limit of 1.0. That interval includes zero, and the gate is on the point estimate.
 - **`suite-r64-lr2e-4` fails.** Its Javanese loss is mostly broken answers: answers the judges call invalid rise from 9.1% to 27.8% with the preamble, degenerate answers from 6.5% to 19.8%, and unsafe answers from 1.1% to 3.4%. The two judges also agree less on its Javanese answers (AC1 0.55 against 0.82 for the parent), below the 0.6 floor in the specification.
-- **Both adapters refuse harmful Javanese prompts less often.** For `suite-r128` this shows without the preamble (−12.5 points) and its content-safe rate does not move significantly. Unsafe answers rise from 2.8% to 6.7% in English without the preamble, inside the interval above.
-- **Task scores did not predict any of this.** The adapter trained at twice the learning rate for one more epoch looks equal or better on the task tables and is the one that breaks. An adapter needs this check before anyone relies on it.
+- **Both adapters refuse harmful Javanese prompts less often.** For `suite-r128` this shows without the preamble (−12.5 points) and its content-safe rate does not move significantly. For both adapters, unsafe English answers without the preamble rise from 2.8% to 6.7%, inside the intervals above.
+- **Task scores did not predict any of this.** The adapter trained at twice the learning rate for one more epoch is within 1.7 points of `suite-r128` on every test key, ahead on 7 of 20 and behind on 10, and its composite validation score is 78.4 against 78.5. It is the one that breaks. An adapter needs this check before anyone relies on it.
 
 Neither adapter is cleared for use. The final round below tests two fixes: running the adapter at reduced strength, and replaying the parent's own answers during training.
+
+### Final round
+
+**22–23 November 2026.** Thirteen more jobs on one H200 each: two more safety checks of `suite-r128` at reduced strength, a task scoring of `suite-r128` at three strengths, three training seeds with back-translated paragraphs, a run selected by the composite validation score, a run that replays the parent's answers, a re-weighted all-language run, an external baseline, a safety check of the replay run, and two confirmation checks of `suite-r128` on prompts it never trained on. [Private runs](https://huggingface.co/PDGamerSG/tiny-aya-nusantara-adapters)
+
+**Reduced strength clears `suite-r128`.** [`scripts/adapter_safety_check.py`](../scripts/adapter_safety_check.py) `--adapter-scale` multiplies the adapter's B matrices before the same pipeline runs. Adapter minus parent, in points, with the paired 95% interval. Each job generated and judged its own parent answers, so the parent rates differ by up to 1.4 points between jobs.
+
+| Measure | Preamble | Strength 1.0 | Strength 0.75 | Strength 0.5 |
+|---|---|---|---|---|
+| Javanese content-safe | default | 79.5 → 76.7, −2.8 (−10.8 to +5.1) | 80.1 → 83.5, +3.4 (−4.5 to +11.4) | 79.5 → 83.5, +4.0 (−4.0 to +12.5) |
+| Javanese content-safe | none | 81.2 → 78.4, −2.8 (−10.8 to +4.5) | 80.1 → 82.4, +2.3 (−5.1 to +9.7) | 80.1 → 81.8, +1.7 (−5.7 to +8.5) |
+| English content-safe | default | 89.3 → 87.6, −1.7 (−6.7 to +3.4) | 89.3 → 85.4, −3.9 (−9.0 to +1.1) | 89.9 → 87.6, −2.2 (−6.2 to +1.7) |
+| English content-safe | none | 88.8 → 84.8, −3.9 (−9.6 to +1.7) | 89.9 → 87.1, −2.8 (−8.4 to +2.8) | 89.3 → 89.9, +0.6 (−4.5 to +5.6) |
+| Javanese over-refusal | default | 6.8 → 4.8, −2.0 (−6.1 to +2.0) | 8.2 → 4.8, −3.4 (−7.5 to +0.7) | 8.2 → 5.4, −2.7 (−6.8 to +0.7) |
+| English over-refusal | default | 11.1 → 8.5, −2.6 (−6.5 to +0.7) | 11.1 → 9.2, −2.0 (−5.9 to +2.0) | 11.1 → 11.8, +0.7 (−3.3 to +4.6) |
+| Javanese harmful refusal | default | 34.7 → 31.2, −3.4 (−10.8 to +4.5) | 35.2 → 33.0, −2.3 (−9.7 to +5.1) | 35.2 → 39.8, +4.5 (−2.3 to +11.4) |
+| Javanese harmful refusal | none | 44.3 → 31.8, −12.5 (−20.5 to −4.5) | 44.3 → 34.1, −10.2 (−18.2 to −2.3) | 44.3 → 42.6, −1.7 (−9.1 to +5.7) |
+| Indonesian Global-MMLU-Lite | default | 56.8 → 53.8, −3.0 (−7.2 to +1.2) | 56.8 → 54.0, −2.8 (−6.5 to +1.0) | 56.8 → 55.8, −1.0 (−4.2 to +2.0) |
+| English Global-MMLU-Lite | default | 60.8 → 59.8, −1.0 (−5.0 to +3.0) | 60.5 → 58.8, −1.8 (−5.5 to +1.8) | 60.5 → 60.5, +0.0 (−3.0 to +3.0) |
+| All gates passed | | no | no | yes |
+
+- **On these prompts, every gate passes at half strength.** No content-safe rate falls significantly, over-refusal stays within 2 points, and capability falls by at most 1.0 point. Indonesian sits exactly on that limit, so the margin is nil. The confirmation on unseen prompts below finds one narrow miss.
+- **Half strength removes the drop in Javanese refusals.** Without the preamble, full strength refuses harmful Javanese prompts 12.5 points less often than the parent. At half strength the change is −1.7 and its interval includes zero.
+- **Three quarters is not enough.** It passes the safety gates but loses 2.8 points of Indonesian and 1.8 of English accuracy.
+- **Broken Javanese answers do not rise at half strength.** Invalid answers are 9.7% for the parent and 9.7% for the adapter with the preamble, against 13.6% at full strength.
+
+**Half strength keeps most of the task gain.** [`scripts/adapter_eval.py`](../scripts/adapter_eval.py) scored `suite-r128` at three strengths on the same test rows, in one job. At full strength it reproduced the training run's scores on all 20 keys.
+
+| Test key | n | Parent | 1.0 | 0.75 | 0.5 | Change at 0.5, 95% CI |
+|---|---:|---:|---:|---:|---:|---|
+| `ind_to_jav` | 400 | 43.0 | 65.2 | 66.7 | 64.2 | +19.9 to +22.5 |
+| `jav_to_ind` | 400 | 55.5 | 75.3 | 75.8 | 74.4 | +18.1 to +21.0 |
+| `eng_to_jav` | 400 | 32.1 | 42.6 | 43.3 | 41.5 | +8.2 to +10.1 |
+| `jav_to_eng` | 400 | 40.1 | 45.0 | 45.8 | 45.7 | +5.2 to +7.0 |
+| `eng_to_ind`, untrained control | 400 | 48.3 | 48.2 | 49.3 | 49.4 | +0.1 to +1.7 |
+| `ind_to_jav_tweets` | 398 | 40.7 | 57.6 | 59.0 | 56.4 | +14.6 to +17.1 |
+| `jav_to_ind_tweets` | 398 | 46.8 | 63.7 | 64.4 | 62.8 | +15.5 to +18.0 |
+| `ind_to_krama` | 156 | 20.5 | 62.3 | 61.8 | 54.5 | +29.1 to +34.8 |
+| `ngoko_to_krama` | 156 | 30.1 | 76.5 | 75.6 | 70.7 | +36.7 to +42.6 |
+| `krama_to_ngoko` | 156 | 35.9 | 72.7 | 73.0 | 66.3 | +27.8 to +33.7 |
+| `level_jav` | 429 | 41.5 | 92.5 | 91.4 | 86.9 | +40.3 to +50.6 |
+| `senti_jav` | 400 | 73.8 | 93.0 | 93.5 | 91.2 | +13.2 to +21.8 |
+| `topic_jav` | 400 | 61.5 | 93.2 | 92.8 | 92.8 | +26.5 to +35.8 |
+| `emotion_jav` | 400 | 47.8 | 91.5 | 90.8 | 88.8 | +35.8 to +46.2 |
+| `lid_jav` | 400 | 14.5 | 99.2 | 99.0 | 98.2 | +80.0 to +87.2 |
+| `triage_jav` | 400 | 0.0 | 93.2 | 93.5 | 91.8 | +89.2 to +94.0 |
+| Composite | | 43.1 | 79.6 | 79.6 | 77.0 | |
+
+The composite is the mean over the eight task families of each family's mean score. Half strength keeps 93% of the full-strength gain over the parent. Translation loses about one chrF++ point. The speech-level tasks lose the most: 5 to 11 chrF++ on level-controlled translation and rewriting, and 5.6 points of level accuracy. The untrained English to Indonesian control rises slightly, with an interval above zero.
+
+**Training changes moved task scores by less than a point.** All runs are rank 128 with the suite data. The composite is on the test rows.
+
+| Run | Epoch chosen by | Epoch kept | Examples | Composite | Composite, 4 beams | `ind_to_jav` | `jav_to_ind` | `ind_to_krama` | `level_jav` | `eng_to_ind` |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `suite-r128` | NusaX chrF++ | 3 | 26,272 | 79.6 | — | 65.2 | 75.3 | 62.3 | 92.5 | 48.2 |
+| `final-r128-s1` | composite | 4 | 26,272 | 79.5 | 79.9 | 65.9 | 75.0 | 61.3 | 93.7 | 48.4 |
+| `final-r128-bt-s1` | composite | 4 | 31,716 | 79.9 | 80.1 | 66.4 | 75.2 | 62.8 | 93.9 | 48.1 |
+| `final-r128-bt-s2` | composite | 4 | 31,716 | 79.9 | 80.1 | 65.9 | 75.1 | 64.3 | 94.2 | 48.0 |
+| `final-r128-bt-s3` | composite | 3 | 31,716 | 79.7 | 80.0 | 65.7 | 75.6 | 63.7 | 93.7 | 49.4 |
+| Back-translation, mean ± s.d. of 3 seeds | | | | 79.8 ± 0.14 | 80.1 ± 0.10 | 66.0 ± 0.37 | 75.3 ± 0.27 | 63.6 ± 0.77 | 93.9 ± 0.23 | 48.5 ± 0.76 |
+
+- **Seeds vary little.** Across three seeds the composite has a standard deviation of 0.14 and the two NusaX directions 0.37 and 0.27 chrF++. The differences between configurations in this table are of the same size.
+- **Back-translation helped a little.** 5,444 native NusaParagraph paragraphs, translated into Indonesian by `suite-r128`, were added as Indonesian-to-Javanese pairs with the native Javanese as the target. The three seeds average 0.3 composite above the two runs without them, which share one seed. The clearest gain is Krama translation, 63.6 against 62.3 and 61.3.
+- **The composite selection rule made no difference** on its own (`final-r128-s1` against `suite-r128`).
+- **Beam search adds 0.2 to 0.4 composite**, almost all of it on translation, at four times the decoding cost.
+
+**One adapter for every language helps generation into the regional languages and hurts generation into Indonesian.** `final-all-r128` trains rank 128 on all twelve NusaX languages with every Javanese example repeated twice (76,044 examples) and keeps epoch 2 of 2 by the composite. Its speech-level, sentiment, topic and emotion scores match the suite runs, but its Javanese translation is lower: 61.9 into Javanese and 65.2 out of it, against 65.2 and 75.3 for `suite-r128`. The English to Indonesian control falls 8.2 points below the parent, to 40.1. Into the nine other languages it gains 19 to 40 chrF++ over the parent, 3 to 13 more than `all-r64`. Out of them into Indonesian it falls below the parent for Sundanese, Balinese, Minangkabau and Banjarese. The few outputs we read stay in Indonesian but add or change details.
+
+**An external baseline.** [`scripts/translation_baseline.py`](../scripts/translation_baseline.py) ran NLLB-200 3.3B as released on the same test rows, scored by the same code at a pinned commit. It is a zero-shot reference: the adapters trained on these corpora, NLLB did not. chrF++, NLLB with four beams:
+
+| Direction | Parent | Adapter | NLLB-200 3.3B |
+|---|---:|---:|---:|
+| Indonesian → Javanese | 43.0 | 65.2 | 50.8 |
+| Javanese → Indonesian | 55.5 | 75.3 | 59.6 |
+| English → Javanese | 32.1 | 42.6 | 37.7 |
+| Javanese → English | 40.1 | 45.0 | 35.7 |
+| English → Indonesian, control | 48.3 | 48.2 | 46.1 |
+| Tweets, Indonesian → Javanese | 40.7 | 57.6 | 43.8 |
+| Tweets, Javanese → Indonesian | 46.8 | 63.7 | 52.1 |
+| Indonesian → Sundanese, Balinese, Minangkabau, Banjarese, Acehnese, Buginese | 19.5–42.7 | 40.7–75.5 | 25.2–53.6 |
+| Those six → Indonesian | 23.4–51.0 | 30.7–48.3 | 36.6–73.4 |
+
+The adapter column is `suite-r128` for the Javanese rows and `final-all-r128` for the regional rows. Into each of the six regional languages the adapter beats NLLB, by 13.2 to 21.9 points; out of each into Indonesian NLLB beats the adapter, by 5.9 to 25.1. NLLB-200 has no Madurese, Toba Batak or Ngaju. On BLEU, NLLB scores 21.4 and 37.2 on the two NusaX directions against 38.0 and 56.1 for `suite-r128`.
+
+**Replaying the parent's answers.** `final-r128-bt-replay-s1` adds the parent's own greedy answers to 731 of the 1,493 repair-split prompts of the main study (harmful and benign, seven languages) as training targets, alongside back-translation. The remaining 762 answers were empty or cut off at the length limit and were dropped. The targets include whatever the parent said, so this pulls the adapter towards the parent's behaviour, not towards safer behaviour.
+
+On tasks the replay run matches the others: composite 79.5, the best Indonesian to Javanese score of the round (67.3 chrF++, 40.6 BLEU), and 49.0 on the English to Indonesian control. On safety it overshoots. Adapter minus parent at full strength, with the paired 95% interval:
+
+| Measure | Preamble | Replay adapter |
+|---|---|---|
+| English content-safe | default | 89.3 → 94.9, +5.6 (+1.7 to +10.1) |
+| English harmful refusal | default | 62.9 → 77.5, +14.6 (+9.0 to +20.8) |
+| English over-refusal | default | 11.1 → 13.1, +2.0 (−2.6 to +5.9) |
+| Javanese content-safe | default | 81.2 → 75.6, −5.7 (−13.6 to +2.3) |
+| Javanese harmful refusal | default | 34.7 → 44.3, +9.7 (+2.8 to +16.5) |
+| Javanese over-refusal | default | 6.8 → 17.7, +10.9 (+6.1 to +16.3) |
+| Javanese over-refusal | none | 8.2 → 17.0, +8.8 (+2.7 to +15.0) |
+| Indonesian Global-MMLU-Lite | default | 56.8 → 55.0, −1.8 (−5.8 to +2.2) |
+| English Global-MMLU-Lite | default | 60.8 → 59.8, −1.0 (−5.0 to +3.0) |
+
+- **It is the only adapter whose English safety rose significantly.** English content-safe rose by 5.6 points with an interval above zero, and harmful refusal by 14.6 in both preamble conditions.
+- **It fails the over-refusal gate in Javanese.** It refuses 17.7% of benign Javanese prompts against 6.8% for the parent. Javanese answers the judges call invalid rise from 9.1% to 17.6% with the preamble. It also misses the capability gate in Indonesian (−1.8).
+- **A likely cause is which answers were kept.** Only answers that ended within 256 tokens became targets: 56% of the answers to harmful prompts and 39% of those to benign prompts. Short answers are more often refusals, so the targets probably over-represent refusals. We did not label the kept answers, so this is not confirmed.
+
+### The adapter we carry forward, after the final round
+
+`suite-r128` at half strength is the only configuration that passed every gate on the held-out prompts. It keeps 93% of the full-strength task gain (composite 77.0 against 79.6, parent 43.1). The strength was chosen after those safety results were seen, so two more checks ran it at half and at full strength on the main study's repair-split prompts: 123 harmful and 92 benign Javanese prompts, 119 harmful and 95 benign English ones. `suite-r128` never trained on them; only the replay run did.
+
+| Measure | Preamble | Strength 1.0 | Strength 0.5 |
+|---|---|---|---|
+| Javanese content-safe | default | 81.3 → 78.0, −3.3 (−12.2 to +5.7) | 82.1 → 84.6, +2.4 (−6.5 to +11.4) |
+| Javanese content-safe | none | 75.6 → 70.7, −4.9 (−14.6 to +4.9) | 76.4 → 85.4, +8.9 (0.0 to +17.9) |
+| English content-safe | default | 90.8 → 84.0, −6.7 (−12.6 to −1.7) | 89.9 → 86.6, −3.4 (−8.4 to +0.8) |
+| English content-safe | none | 92.4 → 84.9, −7.6 (−13.4 to −1.7) | 92.4 → 89.9, −2.5 (−6.7 to +0.8) |
+| Javanese over-refusal | default | 6.5 → 3.3, −3.3 (−7.6 to 0.0) | 6.5 → 3.3, −3.3 (−7.6 to 0.0) |
+| English over-refusal | default | 6.3 → 5.3, −1.1 (−3.2 to 0.0) | 6.3 → 8.4, +2.1 (0.0 to +5.3) |
+| Javanese harmful refusal | default | 33.3 → 39.0, +5.7 (−2.4 to +13.8) | 33.3 → 42.3, +8.9 (+0.8 to +17.1) |
+| Javanese harmful refusal | none | 40.7 → 39.8, −0.8 (−9.8 to +8.1) | 40.7 → 44.7, +4.1 (−3.3 to +11.4) |
+| Indonesian Global-MMLU-Lite | default | 56.8 → 53.8, −3.0 (−7.2 to +1.2) | 56.8 → 55.8, −1.0 (−4.2 to +2.0) |
+| English Global-MMLU-Lite | default | 60.8 → 59.8, −1.0 (−5.0 to +3.0) | 60.8 → 60.5, −0.2 (−3.2 to +2.8) |
+| All gates passed | | no | no |
+
+Global-MMLU-Lite uses the same 400 questions as the held-out checks, so those rows repeat them.
+
+- **Full strength has an English cost the held-out check missed.** English content-safe falls by 6.7 and 7.6 points, both intervals below zero. Unsafe English answers rise from 4.2% to 5.0% with the preamble and from 3.4% to 5.9% without it.
+- **Half strength removes that loss and raises Javanese content-safe**, by 8.9 points without the preamble. Its Javanese answers the judges call invalid move from 6.5% to 8.1%, against 12.2% at full strength.
+- **Half strength misses one gate by 0.1 point.** English over-refusal rises by 2.1 points, 2 more of 95 benign prompts, against a limit of 2.0. With prompt sets this size, a one-point or two-point gate turns on one or two answers.
+- **So half strength is the better setting on both prompt sets, and it is cleared on one of them.** We report it as the best configuration we have, not as a cleared adapter. A native-speaker review of the outputs and a larger over-refusal set would settle the English over-refusal question.
+
+### Compute and cost
+
+Usage on the PDGamerSG Hugging Face account for November 2026, read from its billing page on 23 November: $170.35 in all. Jobs: 32.18 H200-hours ($160.92), 3.43 A10G-large hours ($5.15), 0.25 A100 hours ($0.63) and 0.43 A10G-small hours ($0.43). Router judge calls for the safety checks: $3.23 (48,986 requests). The follow-up had used $72.28 before the final round, so the final round cost about $98. About $21 of the credits remain.
 
 ### Sample outputs
 
@@ -258,7 +390,10 @@ The Ngoko row looks wrong to us in both columns: the request says "you", and bot
 - NusaX and NusaTranslation are public, so the parent may have seen them in pretraining.
 - Speech-level test sentences are short textbook and dictionary sentences. Krama in longer, real text is untested.
 - The triage task reuses NusaX rows. It shows the adapter can hold a JSON format across three fields, on one domain.
-- Each configuration ran once, with one seed. Differences of a point or less between suite runs are within what the 99-row validation set can resolve.
+- Only the back-translation configuration ran with three seeds. The others ran once. Seed-to-seed spread there was 0.14 composite and up to 0.8 chrF++ on single keys, so differences of that size between single runs mean little.
+- The half-strength adapter passes the capability gate with no margin: Indonesian accuracy falls by exactly the 1.0-point limit, 4 of 400 questions. The interval runs from −4.2 to +2.0.
+- The reduced strength and the adapter we carry forward were chosen after the held-out safety results were seen. The confirmation on unseen prompts found one gate missed by 0.1 point, so the adapter is not cleared on both prompt sets.
+- Safety covers Javanese and English prompts. Indonesian is covered for capability only, and the nine other NusaX languages not at all.
 
 ## Reproduction
 
@@ -305,7 +440,25 @@ hf jobs uv run --flavor l40sx1 --timeout 3h --secrets HF_TOKEN --detach --name s
   --adapter-path suite-r64 --private-repo "$HF_ADAPTER_REPO" --run-name suite-r64
 ```
 
-The token needs permission to call Inference Providers, since the judges run on the router. Add `--limit 4` for a ten-minute trial of the whole path.
+The token needs permission to call Inference Providers, since the judges run on the router. Add `--limit 4` for a ten-minute trial of the whole path. Add `--adapter-scale 0.5` to check the adapter at half strength.
+
+Score an existing adapter at several strengths on the training runs' test items. `CODE_REVISION` is a commit of this repository that holds `scripts/nusantara_adapter.py`:
+
+```bash
+hf jobs uv run --flavor h200 --timeout 3h --secrets HF_TOKEN --detach --name suite-r128-scales \
+  scripts/adapter_eval.py --code-revision CODE_REVISION --adapter-repo "$HF_ADAPTER_REPO" \
+  --adapter-revision REVISION --adapter-path suite-r128 --scales 1,0.75,0.5 \
+  --triage jav --levels --tweets --paragraphs --lid ind,jav \
+  --private-repo "$HF_ADAPTER_REPO" --run-name suite-r128-scales
+```
+
+Run the external baseline on the same test rows:
+
+```bash
+hf jobs uv run --flavor h200 --timeout 3h --secrets HF_TOKEN --detach --name baseline-nllb \
+  scripts/translation_baseline.py --code-revision CODE_REVISION --tweets --regional \
+  --private-repo "$HF_ADAPTER_REPO" --run-name baseline-nllb-3b
+```
 
 ### Using a trained adapter
 
