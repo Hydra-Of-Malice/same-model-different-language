@@ -12,10 +12,11 @@ follows the hackathon's recommended write-up sections; everything that did not f
 | `acl_natbib.bst` | Official bibliography style |
 | `adapter_tradeoff.pdf` | Figure 1 (Appendix G), included by `main.tex` |
 | `make_figure.py` | Draws `adapter_tradeoff.pdf` |
-| `main.pdf` | Last local build |
+| `main.pdf` | Last Overleaf build (pdfLaTeX, the engine the template expects) |
 
-Current build: 29 pages in all. The main text (sections 1 to 6) ends at the bottom of page 6, and Limitations starts
-on page 7. Limitations and the Ethics Statement do not count toward the page limit. The EMNLP template itself states only the review limit (8 pages for long papers); the 6-page target
+Current build (Overleaf, pdfLaTeX): 26 pages in all. The main text (sections 1 to 6) ends on page 6, and
+Limitations starts lower on the same page. A local Tectonic build breaks lines slightly differently: 27 pages, with
+the main text ending at the bottom of page 6. Limitations and the Ethics Statement do not count toward the page limit. The EMNLP template itself states only the review limit (8 pages for long papers); the 6-page target
 is the hackathon's.
 
 ## Structure
@@ -40,7 +41,7 @@ is the hackathon's.
 
 ## Compile
 
-**Locally with Tectonic** (what produced `main.pdf`):
+**Locally with Tectonic** (for quick checks; `main.pdf` in the repository is the Overleaf build):
 
 ```bash
 cd paper
@@ -53,11 +54,21 @@ Tectonic runs BibTeX itself and writes only `main.pdf`. It is XeTeX-based and al
 nothing under pdfLaTeX. The two "Wrong driver" hyperref warnings and the `inputenc` warning in the log are harmless.
 The build has no undefined references or citations and no overfull boxes.
 
-Layout choices: paragraph columns in tables use the `L{width}` column type (ragged right, from the `array` package),
-so narrow cells do not stretch word spacing; the appendix raises the float limits (`\topfraction`,
-`\floatpagefraction` and the counters after `\appendix`) so that tables share pages with text instead of sitting
-alone on half-empty pages; and the artifact and reproducibility lists are set ragged right because of their long
-URLs.
+Layout choices:
+
+- Paragraph columns in tables use the `L{width}` column type (ragged right, from the `array` package), so narrow
+  cells do not stretch word spacing.
+- The appendix has no `\clearpage`. A forced page break makes LaTeX put every waiting table on its own pages, which
+  left half-empty pages.
+- After `\appendix`, the float limits are raised (`\topfraction`, `\floatpagefraction` and the counters), float
+  pages are filled from the top instead of being centred, and columns are ragged at the bottom instead of being
+  stretched, so no gaps open between paragraphs.
+- Tables near the end of the appendix are sized to share pages: Table 29 lists both translation directions side by
+  side, Table 30 has its caption beside it, and Tables 30 to 32 are set in footnote size.
+- The artifact and reproducibility lists, and the paragraph of command flags, are set ragged right because of their
+  long URLs and flags.
+- Double hyphens inside `\texttt{...}` are written `-{}-`; otherwise the typewriter font joins them into an en
+  dash, and `--flavor` would print as `–flavor`.
 
 **Locally with pdfLaTeX:**
 

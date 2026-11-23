@@ -537,6 +537,8 @@ XSTest, Global-MMLU-Lite, NusaX, NusaWrites and Unggah-Ungguh released the data 
 \appendix
 % =====================================================================================================
 % The appendix is mostly tables: let a page take more floats, and keep half-empty float-only pages out.
+% Ragged bottom: a short column ends early instead of stretching the space between paragraphs.
+\raggedbottom
 \renewcommand{\topfraction}{0.9}
 \renewcommand{\dbltopfraction}{0.9}
 \renewcommand{\bottomfraction}{0.6}
@@ -547,6 +549,10 @@ XSTest, Global-MMLU-Lite, NusaX, NusaWrites and Unggah-Ungguh released the data 
 \setcounter{dbltopnumber}{4}
 \setcounter{bottomnumber}{2}
 \setcounter{totalnumber}{6}
+\makeatletter
+\setlength{\@fptop}{0pt}\setlength{\@fpsep}{14pt plus 4pt}\setlength{\@fpbot}{0pt plus 1fil}
+\setlength{\@dblfptop}{0pt}\setlength{\@dblfpsep}{12pt plus 4pt}\setlength{\@dblfpbot}{0pt plus 1fil}
+\makeatother
 
 \section{Submission Details}\label{app:submission}
 
@@ -1064,7 +1070,6 @@ and 0.49\%.}
 \label{tab:asr}
 \end{table}
 
-\clearpage
 \section{Task Adapter: Data, Recipe and Ablations}\label{app:adapter}
 
 \paragraph{Tasks and data.} One adapter is trained on up to eight task families, each with an English
@@ -1470,50 +1475,40 @@ back-translation, three seeds. \emph{BT+replay}: back-translation and replay of 
 \label{tab:final-runs}
 \end{table*}
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering\footnotesize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{lrrrr}
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{@{}lrrrrrrrrclrrr@{}}
 \toprule
-Key (chrF++) & Parent & \run{all-r64} & Re-weighted & NLLB \\
+& \multicolumn{4}{c}{\texttt{ind\_to\_}$X$} & \multicolumn{4}{c}{$X$\texttt{\_to\_ind}} & \hspace{6pt} & \multicolumn{4}{c@{}}{Other Javanese keys} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}\cmidrule(l){11-14}
+$X$ & Parent & \run{all-r64} & Re-w. & NLLB & Parent & \run{all-r64} & Re-w. & NLLB & & Key & Parent & \run{all-r64} & Re-w. \\
 \midrule
-\texttt{ind\_to\_sun} & 37.6 & 59.0 & 63.0 & 42.9 \\
-\texttt{sun\_to\_ind} & 49.4 & 48.6 & 43.2 & 62.9 \\
-\texttt{ind\_to\_ban} & 31.4 & 50.4 & 55.2 & 34.8 \\
-\texttt{ban\_to\_ind} & 40.7 & 46.7 & 39.5 & 56.5 \\
-\texttt{ind\_to\_min} & 42.7 & 71.5 & 75.5 & 53.6 \\
-\texttt{min\_to\_ind} & 51.0 & 55.5 & 48.3 & 73.4 \\
-\texttt{ind\_to\_bjn} & 37.2 & 64.0 & 67.2 & 45.6 \\
-\texttt{bjn\_to\_ind} & 47.7 & 50.2 & 43.7 & 58.2 \\
-\texttt{ind\_to\_ace} & 26.8 & 41.6 & 45.8 & 32.6 \\
-\texttt{ace\_to\_ind} & 34.6 & 40.6 & 35.3 & 45.6 \\
-\texttt{ind\_to\_bug} & 19.5 & 32.8 & 40.7 & 25.2 \\
-\texttt{bug\_to\_ind} & 23.4 & 32.2 & 30.7 & 36.6 \\
-\texttt{ind\_to\_mad} & 26.8 & 52.1 & 58.4 & -- \\
-\texttt{mad\_to\_ind} & 30.1 & 43.6 & 37.9 & -- \\
-\texttt{ind\_to\_bbc} & 7.7 & 35.1 & 47.7 & -- \\
-\texttt{bbc\_to\_ind} & 25.5 & 37.6 & 32.9 & -- \\
-\texttt{ind\_to\_nij} & 23.7 & 52.0 & 56.0 & -- \\
-\texttt{nij\_to\_ind} & 32.6 & 39.8 & 34.8 & -- \\
+\texttt{sun} & 37.6 & 59.0 & 63.0 & 42.9 & 49.4 & 48.6 & 43.2 & 62.9 & & \texttt{eng\_to\_ind} & 48.3 & 42.3 & 40.1 \\
+\texttt{ban} & 31.4 & 50.4 & 55.2 & 34.8 & 40.7 & 46.7 & 39.5 & 56.5 & & \texttt{level\_jav} & 41.5 & 81.1 & 94.4 \\
+\texttt{min} & 42.7 & 71.5 & 75.5 & 53.6 & 51.0 & 55.5 & 48.3 & 73.4 & & \texttt{emotion\_jav} & 47.8 & 48.2 & 91.8 \\
+\texttt{bjn} & 37.2 & 64.0 & 67.2 & 45.6 & 47.7 & 50.2 & 43.7 & 58.2 & & \texttt{triage\_jav} & 0.0 & 79.5 & 87.2 \\
+\texttt{ace} & 26.8 & 41.6 & 45.8 & 32.6 & 34.6 & 40.6 & 35.3 & 45.6 & & & & & \\
+\texttt{bug} & 19.5 & 32.8 & 40.7 & 25.2 & 23.4 & 32.2 & 30.7 & 36.6 & & & & & \\
+\texttt{mad} & 26.8 & 52.1 & 58.4 & -- & 30.1 & 43.6 & 37.9 & -- & & & & & \\
+\texttt{bbc} & 7.7 & 35.1 & 47.7 & -- & 25.5 & 37.6 & 32.9 & -- & & & & & \\
+\texttt{nij} & 23.7 & 52.0 & 56.0 & -- & 32.6 & 39.8 & 34.8 & -- & & & & & \\
 \midrule
-\texttt{ind\_to\_jav} & 43.2 & 64.4 & 61.9 & -- \\
-\texttt{jav\_to\_ind} & 55.4 & 68.5 & 65.2 & -- \\
-\texttt{eng\_to\_ind} & 48.3 & 42.3 & 40.1 & -- \\
-\texttt{level\_jav} & 41.5 & 81.1 & 94.4 & -- \\
-\texttt{emotion\_jav} & 47.8 & 48.2 & 91.8 & -- \\
-\texttt{triage\_jav} & 0.0 & 79.5 & 87.2 & -- \\
+\texttt{jav} & 43.2 & 64.4 & 61.9 & -- & 55.4 & 68.5 & 65.2 & -- & & & & & \\
 \bottomrule
 \end{tabular}
 \caption{All-language adapters on the other NusaX languages (200 test rows per key) and on selected Javanese
-keys. \emph{Re-weighted}: rank 128, Javanese repeated twice, two epochs. NLLB-200 3.3B with 4 beams, as released;
-it has no Madurese, Toba Batak or Ngaju.}
+keys (chrF++ for translation, accuracy in \% for the rest). \emph{Re-w.}: re-weighted, rank 128, Javanese repeated
+twice, two epochs. NLLB-200 3.3B with 4 beams, as released; it has no Madurese, Toba Batak or Ngaju.}
 \label{tab:regional}
-\end{table}
+\end{table*}
 
 % NLLB-200 baseline (filled from baseline-nllb-3b/metrics.json).
 \begin{table*}[t]
-\centering\small
-\setlength{\tabcolsep}{5pt}
+\centering\footnotesize
+\begin{minipage}[c]{0.6\textwidth}
+\centering
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lrrrrr}
 \toprule
 & & & & \multicolumn{2}{c}{NLLB-200 3.3B} \\
@@ -1531,10 +1526,13 @@ BLEU, \texttt{ind\_to\_jav} & 400 & -- & 38.0 & 20.7 & 21.4 \\
 BLEU, \texttt{jav\_to\_ind} & 400 & -- & 56.1 & 33.9 & 37.2 \\
 \bottomrule
 \end{tabular}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.37\textwidth}
 \caption{NLLB-200 3.3B \citep{nllb2022}, used as released (float32, at most 256 new tokens), on the same test
 rows as the adapters, scored by the same code. It is a zero-shot reference; the adapters are fine-tuned on these
 corpora, so the comparison is not matched. Regional languages are in Table~\ref{tab:regional}.}
 \label{tab:nllb}
+\end{minipage}
 \end{table*}
 
 \section{Prompt Templates}\label{app:prompts}
@@ -1609,8 +1607,8 @@ JSON object with three string fields; one Markdown code fence is tolerated.
 \section{Hyperparameters}\label{app:hparams}
 
 \begin{table*}[t]
-\centering\small
-\begin{tabular}{L{3.0cm}L{12.0cm}}
+\centering\footnotesize
+\begin{tabular}{@{}L{2.6cm}L{12.9cm}@{}}
 \toprule
 Component & Setting \\
 \midrule
@@ -1640,8 +1638,8 @@ AuditKIT 1.1.3 & Evaluation on precomputed outputs, temperature 0, explicit vari
 \end{table*}
 
 \begin{table*}[t]
-\centering\small
-\begin{tabular}{L{4.0cm}L{11.0cm}}
+\centering\footnotesize
+\begin{tabular}{@{}L{3.3cm}L{12.2cm}@{}}
 \toprule
 Setting & Value \\
 \midrule
@@ -1838,7 +1836,7 @@ NusaWrites \texttt{nusa\_alinea-emot-jav-test.csv} & \texttt{8a84f425cdb3b223be4
 \label{tab:sha}
 \end{table*}
 
-\paragraph{Commands.} Main pipeline (set-up, tests, small integration run, full run; \texttt{--family earth} is
+\paragraph{Commands.} Main pipeline (set-up, tests, small integration run, full run; \texttt{-{}-family earth} is
 required because the script defaults to Fire, and a rerun resumes after an interruption):
 \begin{lstlisting}
 uv venv --python 3.12 .venv
@@ -1860,13 +1858,13 @@ hf jobs uv run --flavor l40sx1 --timeout 3h --secrets HF_TOKEN --detach --name s
 python scripts/javanese_tools.py --adapter "$HF_ADAPTER_REPO" --adapter-path suite-r64 \
   translate --source ind --target jav --level krama "Kamu makan apa hari ini?"
 \end{lstlisting}
-The commands above are the documented templates; the flags of each run are recorded in its \texttt{metrics.json}.
-Every adapter run used \texttt{--flavor h200} with \texttt{--train-batch-size 16 --batch-tokens 12000
---accumulation 1 --batch-size 64}. Suite runs add \texttt{--triage jav --levels --tweets --paragraphs --lid
-ind,jav}; all-language runs add \texttt{--regional}; the final round adds \texttt{--rank 128 --select composite
---epochs 4 --num-beams 4}, \texttt{--back-translate REPO@SHA:suite-r128}, \texttt{--seed}, \texttt{--replay} or
-\texttt{--scales 0.75} as Appendix~\ref{app:final} describes. Safety checks at reduced strength add
-\texttt{--adapter-scale}, and \texttt{scripts/adapter\_eval.py} scores an adapter at several strengths.
+{\raggedright The commands above are the documented templates; the flags of each run are recorded in its \texttt{metrics.json}.
+Every adapter run used \texttt{-{}-flavor h200} with \texttt{-{}-train-batch-size 16 -{}-batch-tokens 12000
+-{}-accumulation 1 -{}-batch-size 64}. Suite runs add \texttt{-{}-triage jav -{}-levels -{}-tweets -{}-paragraphs -{}-lid
+ind,jav}; all-language runs add \texttt{-{}-regional}; the final round adds \texttt{-{}-rank 128 -{}-select composite
+-{}-epochs 4 -{}-num-beams 4}, \texttt{-{}-back-translate REPO@SHA:suite-r128}, \texttt{-{}-seed}, \texttt{-{}-replay} or
+\texttt{-{}-scales 0.75} as Appendix~\ref{app:final} describes. Safety checks at reduced strength add
+\texttt{-{}-adapter-scale}, and \texttt{scripts/adapter\_eval.py} scores an adapter at several strengths.\par}
 
 \label{lastpage}
 \end{document}
