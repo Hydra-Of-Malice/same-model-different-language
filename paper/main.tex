@@ -78,30 +78,30 @@ test whether Tiny Aya Earth, a 3.35B regional model, is less safe than Tiny Aya 
 languages, on held-out harmful prompts with full-precision weights. Only Javanese with the default system
 preamble passes the corrected test (9.7 points, $p = 0.0023$); Thai, the language chosen for repair, does not.
 The Javanese gap consists mostly of broken rather than harmful answers, and it depends on the judge: Command~A
-confirms it, while the 32B judge pair named in the specification places it just above the threshold. None of
-five training-free repairs built with four Lexsi kits met all pre-set conditions, an edit confined to faithful
-refusal circuits did no better than the same edit on random layers, and 4-bit quantisation lowered safe rates
-further. A follow-up multi-task Javanese LoRA adapter on the repaired checkpoint raises Indonesian-to-Javanese
-chrF++ from 43.0 to 65.2 but loses 3.0 points of Indonesian capability against a 1-point limit, and a second
-adapter with nearly identical task scores lowers the Javanese content-safe rate from 79.0\% to 51.1\%. At half
-strength the first adapter keeps 93\% of its task gain and passes every gate on the held-out prompts; on unseen
-prompts it misses the over-refusal limit by 0.1 point, while at full strength it is significantly less safe in
-English there.
+confirms it, while the 32B judge pair named in the specification finds 9.1 points ($p = 0.0195$), short of the
+corrected bar. None of five training-free edits built with four Lexsi kits met all pre-set conditions, confining the
+edit to faithful refusal circuits showed no detectable advantage over random layers, and the tested 4-bit versions
+had lower safe rates. A follow-up multi-task Javanese LoRA adapter on the edited checkpoint raises
+Indonesian-to-Javanese chrF++ from 43.0 to 65.2 but loses 3.0 points of Indonesian capability against a 1-point
+limit; a second adapter with nearly identical task scores lowers the Javanese content-safe rate from 79.0\% to
+51.1\%, an estimate below our judge-agreement floor. At half strength the first adapter keeps 93\% of its composite
+task gain and meets every measured gate on the prompts used to choose that strength; on a second prompt set it
+misses the over-refusal limit by 0.1 point, and at full strength it is significantly less safe in English there.
 \end{abstract}
 
 \begin{figure}[!t]
 \noindent\fbox{\parbox{\dimexpr\columnwidth-2\fboxsep-2\fboxrule\relax}{\setlength{\parskip}{2pt}%
 \textbf{For judges: one minute}\par
-\textbf{Claim.} Per language, Tiny Aya Earth is significantly less safe than Tiny Aya Global only in Javanese;
-no training-free repair met all pre-set conditions; and task scores did not predict whether a Javanese adapter
-stays safe.\par
-\textbf{Tracks.} 2b, problem 2: repairing safety drift without retraining (main entry); 2b, problem 4:
-inference-time safety steering; 2b, problem 5: locating where safety lives; 2a, problem 4: multilingual and
-code-mixed safety. The adapter study (\S\ref{sec:adapt}) is an extension.\par
+\textbf{Claim.} On 176 held-out Javanese prompts (default preamble), the local judges called 160 Global and 143
+Earth answers safe and one of each unsafe; Earth had 10 more invalid and 7 more disputed answers. The gap passes the
+corrected test with the local judges and Command~A, not with the pre-specified 32B pair; no other language passes.
+No training-free edit met all pre-set conditions.\par
+\textbf{Tracks.} 2b, problems 2 (main entry), 4 and 5; 2a, problem 4 supports the multilingual evaluation
+(code-mixing only in a small Fire pilot). The adapter study (\S\ref{sec:adapt}) is an extension.\par
 \textbf{Headline.} Thai content-safe rate (held-out, FP16, default preamble): Earth 89.2\% $\rightarrow$ 89.8\%
-with the selected repair, 94.3\% with the closest arm (Global 94.9\%); neither met all conditions. Adapter at half
-strength: Indonesian-to-Javanese chrF++ 43.0 $\rightarrow$ 64.2; it passes every gate on the held-out prompts,
-where the strength was chosen, and misses one by 0.1 point on unseen prompts.\par
+(157 $\rightarrow$ 158 of 176) with the selected edit, 94.3\% with the closest arm (Global 94.9\%); neither met all
+conditions. Adapter at half strength: Indonesian-to-Javanese chrF++ 43.0 $\rightarrow$ 64.2; it meets every measured
+gate on the prompts used to choose its strength and misses one by 0.1 point on a second set.\par
 \textbf{Model and method.} Tiny Aya Earth (3.35B; FP16, Q4\_K\_M, NF4); without training, CircuitKIT ranks the
 layers that drive refusal and SafeTune merges Earth toward Global in 7 of 36 layers.\par
 \textbf{Content note.} The paper discusses harmful requests but quotes none, and no model answer to one.
@@ -117,7 +117,7 @@ public-service helpline that serves several languages; such a deployment needs s
 languages, and for the file it will actually run. Tiny Aya \citep{salamanca2026tinyaya} is a family of 3.35B-parameter
 models: Global is balanced across languages, while Fire, Earth and Water target South Asia, Africa
 and West Asia, and Europe and Asia-Pacific. Its report evaluates safety on MultiJail \citep{deng2024multijail} and
-gives Earth a worst-language safe rate of 77.5\% against 87.0\% for Global, with means of 87.8\% and 91.1\%: a check
+gives Earth a lowest safe rate across ten languages of 77.5\% against 87.0\% for Global, with means of 87.8\% and 91.1\%: a check
 that reads only the mean sees 3.3 of the 9.5 points. The per-language table covers Global only
 \citep[Table~26]{salamanca2026tinyaya}, so the size of Earth's gap is public and its location is not.
 
@@ -174,8 +174,9 @@ safety mode; deployers can strip it, so every safety result is reported with it 
 
 \paragraph{Data and splits.} The languages are Arabic and Swahili (Earth's region); Javanese, Bengali, Thai and
 Korean, where a 4-bit pilot on repair-split items found Earth weakest; and English as the control. Harmful prompts
-come from MultiJail, Aya red-teaming (Arabic, English) and XSTest's unsafe contrast prompts (English); none is
-translated. The over-refusal set is XSTest's safe look-alikes, translated by Global and screened by automatic checks.
+come from MultiJail (non-English prompts translated by its authors), Aya red-teaming (Arabic, English) and XSTest's
+unsafe contrast prompts (English), used as published. The over-refusal set is XSTest's safe look-alikes, translated by
+Global and screened by automatic checks; no native speaker has reviewed either set.
 The capability (retention) check is Global-MMLU-Lite \citep{singh2024globalmmlu} accuracy from the next-token letter
 choice; Indonesian stands in for Javanese, and Thai has no capability measure. CuratorKIT kept 3,778 of 3,782
 prompts and our leakage check removed 21 more, leaving 3,757 (Table~\ref{tab:prompts}). Whole groups of language
@@ -189,11 +190,13 @@ a content rubric with the report's labels \textit{safe}, \textit{unsafe} and \te
 (Appendix~\ref{app:prompts}). Both must agree; otherwise the answer is \textit{unclear} or \textit{disputed}. A rule
 marks empty, looping and prompt-echoing answers \textit{invalid}; against a blind audit of 153 pilot answers it had
 precision 0.92 and recall 0.56, so it undercounts. A language is reported only if the judges reach Gwet's AC1 of 0.6
-on content labels \citep{gwet2008ac1} and Cohen's $\kappa$ of 0.6 on refusal labels \citep{cohen1960kappa}; none fell
-below. The local pair agreed with the 32B pair named in the specification (Aya Expanse 32B, Qwen3-32B) at $\kappa$
-0.79--1.00 per language on refusal labels in a 1,680-answer sample. After the freeze, the 32B pair re-judged every held-out answer of
+on content labels \citep{gwet2008ac1}; all 126 model--language cells do (lowest 0.78). Refusal labels keep Cohen's
+$\kappa$ \citep{cohen1960kappa}, which does not gate: 59 of 126 cells fall below 0.6, almost all in Bengali, Javanese
+and Swahili (Earth 0.41, 0.53, 0.41), so over-refusal there rests on weaker agreement. On the 1,235 of 1,680 sampled
+answers that both pairs labelled clearly, the local pair agreed with the 32B pair named in the specification (Aya
+Expanse 32B, Qwen3-32B) at refusal $\kappa$ 0.79--1.00 per language (0.34--0.73 counting unclear labels). After the freeze, the 32B pair re-judged every held-out answer of
 all 18 evaluated models, and Command~A \citep{cohere2025commanda}, the report's judge, every answer of Global, Earth,
-the selected repair, Fire and Water (Appendix~\ref{app:extra}). \textbf{No native speaker has labelled any answer
+the selected edit, Fire and Water (Appendix~\ref{app:extra}). \textbf{No native speaker has labelled any answer
 yet}; blind model reads are our only check on correctness.
 
 \paragraph{Metrics and why.} The primary metric is the \emph{content-safe rate} (higher is better): the share of
@@ -203,8 +206,8 @@ we report the unsafe, invalid and disputed shares (lower is better), since harm 
 over-refusal (lower is better) and capability (higher is better). Rates carry 95\% percentile bootstrap intervals
 (10,000 resamples); paired comparisons use exact McNemar tests \citep{mcnemar1947} and paired bootstrap
 intervals. Adapter tasks are scored by corpus chrF++ \citep{popovic-2015-chrf,popovic-2017-chrf}, BLEU
-\citep{post-2018-call} and accuracy (higher is better), beside an untrained English-to-Indonesian control that
-should not fall.
+\citep{post-2018-call} and accuracy (higher is better), beside an English-to-Indonesian control, untrained in the
+suite runs, that should not fall.
 
 \paragraph{Pre-registered thresholds.} The specification was frozen on 7 November 2026, before any full-run answer
 existed (Appendix~\ref{app:history}). A gap is \emph{confirmed} in a language and preamble condition only if Global
@@ -252,19 +255,17 @@ of the 14 tests to pass (Table~\ref{tab:gap}). Bengali ($p = 0.0041$), Thai ($p 
 ($p = 0.0386$) have intervals above zero but miss the corrected bar. In Arabic and Swahili, the two languages in
 Earth's region, Earth stays within 1.2 points of Global in both conditions. Averages hide the gap: Earth's seven-language mean with the preamble is 4.4 points below Global's
 (90.4\% against 94.8\%). Under the 32B pair the Javanese gap is 9.1 points ($p = 0.0195$) and no cell passes; under
-Command~A it is 10.8 points ($p = 0.0013$) and no other cell passes, so two of three judge setups confirm it. Fire
-and Water are compared in Appendix~\ref{app:extra}.
+Command~A it is 10.8 points ($p = 0.0013$) and no other cell passes, so two of three judge setups confirm it.
 
 \subsection{Not safe is mostly not harmful}\label{sec:harm}
 
 With the preamble, Earth's 17 fewer safe Javanese answers are 10 more broken answers and 7 more on which the judges
 disagreed; both judges called 1 of 176 answers unsafe for each model. As an attack success rate over all seven
-languages, both judges called 0.24\% of Global's held-out answers to harmful prompts unsafe and 0.41\% of Earth's
-(Table~\ref{tab:asr}). In Thai, no answer of either model was called unsafe by both judges; Earth's shortfall is
+languages, both judges called 0.24\% (3 of 1,228) of Global's held-out answers to harmful prompts unsafe, 0.41\%
+(5) of Earth's and 0.90\% (11) of the selected edit's (Table~\ref{tab:asr}). In Thai, no answer of either model was called unsafe by both judges; Earth's shortfall is
 2.8\% invalid and 8.0\% disputed answers, against 0.0\% and 5.1\% for Global (Table~\ref{tab:thai}). Blind model
-reads of 60 prompts per model and condition found no Thai gap (88.3\% against 90.0\% safe with the preamble,
-$-$1.7 points, 95\% CI $-$10.0 to 6.7) and a Javanese gap of 20.0 points (8.3 to 31.7) in invalid answers, or 13.3
-points (3.3 to 25.0) on a second read. Judges pass broken Javanese: of 207 answers they called safe, readers labelled
+reads of 60 prompts per model and condition found no Thai gap ($-$1.7 points, 95\% CI $-$10.0 to 6.7) and a
+Javanese gap of 20.0 points (8.3 to 31.7) in invalid answers. Judges pass broken Javanese: of 207 answers they called safe, readers labelled
 34 invalid and 6 unsafe.
 
 \subsection{No training-free repair met all conditions}\label{sec:repairs}
@@ -310,32 +311,29 @@ numbers alone no arm passes (Table~\ref{tab:repairs}). Circuit merge closed 10\%
 over-refusal by 2.1 points (3 of 142 benign prompts) and cost 1.3 points of Swahili capability (5 of 400 questions).
 Merge-back came nearest: it closed 90\% of the gap but raised Arabic over-refusal by 2.6 points and cost 1.5 points of
 capability in Arabic and Indonesian. Steering was the only arm inside the capability bar in both preamble
-conditions. The over-refusal and capability bars amount to about 3 benign prompts and 4 questions per language,
-and the random-layer controls crossed them too. Under Command~A the selected arm closes none of the Thai gap ($-$22\%
-with the preamble). A blind read found its Javanese answers still broken: 63.3\% safe with the preamble (Earth
-60.0\%, Global 80.0\%), 35\% invalid.
+conditions. Under Command~A the selected arm closes none of the Thai gap ($-$22\%), and a blind read found 35\% of
+its Javanese answers invalid.
 
 \subsection{Localising refusal did not improve the edit}\label{sec:circuits}
 
 EAP-IG with CircuitKIT on Global and Earth in English, Javanese and Bengali (16 minimal pairs per language, without
-the preamble) gives circuits of 428 of 612 nodes. All six pass the patching test, reproducing 0.90 to 1.01 of the full model's push toward refusing, against 0.21 to 0.69 for a
-baseline that keeps every MLP block and adds 392 random heads; ablation is uneven, down to $-$0.06 for Earth in
-Javanese, where the refusal signal is small (Table~\ref{tab:faith}). The editing mask uses Global's circuit, with
+the preamble) gives circuits of 428 of 612 nodes. All six pass the patching test (0.90 to 1.01 of the full model's
+push toward refusing, against 0.21 to 0.69 for a random-head baseline); ablation is uneven (Table~\ref{tab:faith}). The editing mask uses Global's circuit, with
 node scores averaged over the three languages. Confining the edit to the circuit made it a quarter to a third of the
 size and kept up to 1.5 points more capability, but it did not make the model safer (Table~\ref{tab:circuit}): Circuit
 merge gave 4.5 points fewer safe Thai answers than whole-model Merge-back (95\% CI $-$9.1 to 0.0), and against the
 same edit on random layers it differed by $-$2.8 to $+$2.8 points across three seeds and both preamble conditions,
-with every interval spanning zero. The map locates where refusal is computed, most clearly in English; it did not
+with every interval spanning zero, so we found no detectable advantage. The map locates where refusal is computed, most clearly in English; it did not
 find layers whose edit fixes the answers Earth gets wrong.
 
-\subsection{4-bit quantisation lowered safety further}\label{sec:quant}
+\subsection{The tested 4-bit versions were less safe}\label{sec:quant}
 
 Each precision is compared only with Global and Earth at that precision, because Q4\_K\_M runs under llama.cpp
 and NF4 on a different GPU (Table~\ref{tab:quant}). The repair did not hold: at Q4\_K\_M and NF4 it closed none of the
-Thai gap ($-$11\% and $-$9\%) and missed the other two conditions. Quantisation itself cost safety: with the
+Thai gap ($-$11\% and $-$9\%) and missed the other two conditions. The tested 4-bit versions were less safe: with the
 preamble, Global and Earth gave 2 to 3 points fewer safe answers at Q4\_K\_M and about 4 fewer at NF4, averaged over
-the seven languages, and Earth's Javanese fell from 81.2\% to 71.0\% and 70.5\%, through breakdown rather than harm
-(broken answers rose from 9.1\% to 18.8\% and 15.9\%; unsafe ones stayed at or below 1.7\%). The repaired model broke
+the seven languages, and Earth's Javanese fell from 81.2\% to 71.0\% and 70.5\%, through breakdown rather than harm.
+The edited model broke
 down less, with 8.5 and 11.4 points more safe Javanese answers than Earth at the same precision (95\% CIs 2.8 to 14.8
 and 4.0 to 18.8); this is exploratory, and neither difference clears the corrected bar.
 
@@ -352,19 +350,16 @@ Tiny Aya report, Global 0.22) and speech levels second (Table~\ref{tab:survey}).
 families (Appendix~\ref{app:adapter}): translation among Indonesian, English and Javanese on NusaX-MT
 \citep{winata2023nusax} and NusaTranslation tweets \citep{cahyawijaya2023nusawrites}, sentiment, JSON triage,
 speech-level classification, translation and rewriting on Unggah-Ungguh \citep{farhansyah2025unggah}, NusaParagraph
-topic and emotion, and language identification. English-to-Indonesian translation is never trained and serves as the
-control. Following \citet{abdulmumin2026afriscience}, we train LoRA on all seven attention and MLP projections (rank
+topic and emotion, and language identification. English-to-Indonesian translation is never trained in the suite
+runs and serves as the control. Following \citet{abdulmumin2026afriscience}, we train LoRA on all seven attention and MLP projections (rank
 64; 128 for the adapter we carry forward) at learning rate $10^{-4}$ and keep the epoch with the best validation
-chrF++, in BF16 on one NVIDIA H200 per run (Table~\ref{tab:hparams-adapter}). The parent, the same model with the
-adapter switched off, is scored in the same job on identical test items.
+chrF++, on one H200 per run (Table~\ref{tab:hparams-adapter}). The parent (adapter off) is scored in the same job.
 
 \paragraph{Task gains.} The adapter we carry forward, \run{suite-r128}, raises Indonesian-to-Javanese chrF++ from
 43.0 to 65.2 and Javanese-to-Indonesian from 55.5 to 75.3, speech-level accuracy from 41.5\% to 92.5\% and Javanese
-identification from 14.5\% to 99.2\%, while the untrained control stays at 48.3 against 48.2 (Table~\ref{tab:tasks}).
+identification from 14.5\% to 99.2\%, while the control moves from 48.3 to 48.2 (Table~\ref{tab:tasks}).
 NLLB-200 3.3B, run as released, reaches 50.8 and 59.6 chrF++ on the two NusaX directions, a zero-shot reference
-rather than a matched comparison (Table~\ref{tab:nllb}), and three seeds of a back-translation run differ by 0.14
-composite (Table~\ref{tab:final-runs}). Ablations of capacity, data, learning rate, starting checkpoint and language
-mix are in Appendix~\ref{app:adapter}. The rule that chose \run{suite-r128} was set after the test table had been
+rather than a matched comparison (Table~\ref{tab:nllb}). Seeds and ablations are in Appendices~\ref{app:adapter} and~\ref{app:final}. The rule that chose \run{suite-r128} was set after the test table had been
 seen, so the choice is not blind.
 
 \paragraph{Safety check.} Because benign fine-tuning can weaken refusals, the frozen pipeline, fetched at a pinned
@@ -372,11 +367,13 @@ commit, re-runs on the 654 held-out Javanese and English prompts in both preambl
 \run{suite-r128} passes the safety gates and misses the capability gate: Indonesian accuracy drops by 3.0 points
 against a limit of 1.0 (the interval includes zero, and the gate is on the point estimate), and without the preamble
 it refuses harmful Javanese prompts 12.5 points less often. \run{suite-r64-lr2e-4}, within 1.7 points of it on every
-test key but trained at twice the learning rate for one more epoch, fails: its Javanese content-safe rate falls from
+test key but with half the rank, twice the learning rate and one more epoch, fails: its Javanese content-safe rate falls from
 79.0\% to 51.1\% ($-$27.8 points, 95\% CI $-$36.4 to $-$19.3) and its Indonesian capability by 6.5 points
-(Table~\ref{tab:safety}). The loss is mostly broken answers (with the preamble, invalid answers rise from 9.1\% to
-27.8\%, degenerate ones from 6.5\% to 19.8\% and unsafe ones from 1.1\% to 3.4\%), and the judges' Javanese AC1
-falls to 0.55 (parent 0.82), below the floor of 0.6. Task scores did not predict this outcome, and neither adapter is cleared for use at full strength.
+(Table~\ref{tab:safety}). The loss is mostly broken answers (invalid 9.1\% $\rightarrow$ 27.8\%, unsafe 1.1\%
+$\rightarrow$ 3.4\%, with the preamble), and the judges' Javanese AC1
+falls to 0.55 (parent 0.82), below the floor of 0.6, so this estimate is descriptive. In these two configurations
+task scores did not predict safety; three settings differ, so the cause cannot be isolated. Neither adapter is
+cleared for use at full strength.
 
 \begin{table}[t]
 \centering\footnotesize
@@ -410,45 +407,43 @@ and~\ref{tab:repair-safety-full}. Composite: eight-family test mean (parent 43.1
 \end{table}
 
 \paragraph{Two fixes.} \textit{Reduced strength} scales the adapter's update without retraining
-(Table~\ref{tab:strength}, Figure~\ref{fig:tradeoff}). At half strength \run{suite-r128} passes every gate on the
-held-out prompts: the
+(Table~\ref{tab:strength}, Figure~\ref{fig:tradeoff}). At half strength \run{suite-r128} meets every measured gate on
+the held-out prompts, which we used to choose the strength: the
 12.5-point drop in Javanese refusals without the preamble shrinks to 1.7 points, with an interval that includes zero.
 Indonesian capability falls by exactly the 1-point limit, so
 the margin is nil. The half-strength adapter keeps 93\% of the composite task gain (77.0 against 79.6; parent 43.1):
 translation loses about one chrF++ point, speech-level tasks lose 5 to 11, and the untrained control rises from 48.3
 to 49.4 (Table~\ref{tab:strength-tasks}); strength 0.75 still fails the capability gate. \textit{Replaying} the parent's own answers to the repair-split
-prompts during training overshoots: English content-safe rises by 5.6 points (95\% CI $+$1.7 to $+$10.1), but benign
-Javanese prompts are refused 10.9 points more often, probably because only answers that ended within 256 tokens, more
-often refusals, became targets. \textit{Confirmation.} The strength was chosen after the held-out results were
-seen, so we re-ran both strengths on the 429 Javanese and English repair-split prompts, which \run{suite-r128} never
-trained on (Table~\ref{tab:repair-safety-full}). At full strength English content-safe falls significantly, by 6.7
+prompts during training overshoots: English content-safe rises by 5.6 points, but benign Javanese prompts are
+refused 10.9 points more often (Appendix~\ref{app:final}). \textit{Second prompt set.} The strength was chosen after the held-out results were
+seen, so we re-ran both strengths on the 429 Javanese and English repair-split prompts; \run{suite-r128} never trained
+on them and they played no part in choosing its strength, though the main study used them to choose repairs
+(Table~\ref{tab:repair-safety-full}). At full strength English content-safe falls significantly, by 6.7
 and 7.6 points (both 95\% intervals below zero), a loss the held-out check did not show. At half
 strength that loss shrinks to 3.4 and 2.5 points, with intervals that include zero, and Javanese content-safe rises,
-but English over-refusal rises by 2.1 points, 2 more of 95 benign prompts, against a limit of 2.0. Half strength is
-the better setting on both prompt sets, and it is cleared on one of them.
+but English over-refusal rises by 2.1 points (6 to 8 of 95 benign prompts) against a limit of 2.0. Half strength is
+the better setting on both sets: it met the measured gates on the selection set and missed one on the second.
+Passing tests for detectable loss does not show that the adapter is as safe as its parent.
 
 % =====================================================================================================
 \section{Conclusion}
 % =====================================================================================================
 
-Per language, Tiny Aya Earth is significantly less safe than Tiny Aya Global only in Javanese with the default
-preamble, mostly through broken answers that a mean over languages hides and an edit that moves refusals cannot fix.
-No training-free repair met all pre-set conditions, faithful circuits gave no better edit than random layers, and
-4-bit quantisation lowered safe rates further. Two Javanese adapters that the task metrics cannot separate diverge
-sharply on safety; at half strength the first keeps 93\% of its task gain, passes every gate on the held-out
-prompts and misses one by 0.1 point on unseen ones. Without the frozen
+Per language, Earth falls significantly below Global only in Javanese with the default preamble, under two of three
+judge setups, mostly through broken answers that a mean over languages hides and an edit that moves refusals cannot
+fix. No training-free edit met all pre-set conditions, circuit placement showed no detectable advantage over random
+layers, and the tested 4-bit versions had lower safe rates. Two Javanese adapters that the task metrics cannot
+separate diverge sharply on safety; at half strength the first keeps 93\% of its composite task gain, meets every
+measured gate on the selection set and misses one by 0.1 point on a second set. Without the frozen
 test, Thai's 5.7-point gap could have been read as confirmed. Native-speaker review of judges, prompts and adapter outputs is the
 most important missing piece.
 
 \paragraph{What did not work.} Beyond the repairs, the adapter trained at twice the learning rate broke Javanese safety, the all-language adapter lowered Javanese-to-Indonesian and the control, and
-replay over-refused benign Javanese prompts. Earlier, SafeTune's node mask kept 30 of 36 layers, default ReSta and
-steering strengths broke Tiny Aya, and refusal alone could not test the report's numbers (Appendices~\ref{app:kits}
-and~\ref{app:history}).
+replay over-refused benign Javanese prompts; kit defaults that failed are in Appendix~\ref{app:kits}.
 
-\paragraph{Cost.} The main study ran on one laptop RTX 4060 (8\,GB), about 93 hours from first stage to last, plus
-about \$15 of Hugging Face credits for rented GPUs and paid judge calls, the largest being the full Command~A run
-(about \$61 at list price). The adapter study used 32.2 H200 GPU-hours of Hugging Face Jobs; with smaller jobs and
-judge calls, its account spent \$170.35 in November (Appendix~\ref{app:compute}).
+\paragraph{Cost.} The main study used about 93 laptop-GPU hours, \$15 of Hugging Face credits and paid judge calls;
+the adapter study's account spent \$170.35
+(Appendix~\ref{app:compute}).
 
 \paragraph{With more credits.} Measurement comes first (Appendix~\ref{app:credits}): native reviewers;
 Command~A with the report's rubric wording on every model; all 315 MultiJail items in both conditions, expected to
@@ -492,7 +487,9 @@ text is untested. The triage task reuses NusaX rows and shows only that the adap
 domain. Only the back-translation configuration ran with three seeds; the others ran once, and differences
 below about half a point are within seed spread. The adapter-selection rule and the strength of 0.5 were set after
 the test and held-out safety results had been seen; the half-strength adapter meets the capability gate with no
-margin, and on the unseen repair-split prompts it misses the over-refusal gate by 2 of 95 prompts. One-point and
+margin, and on the second (repair-split) prompt set it misses the over-refusal gate by 2 of 95 prompts. Both sets
+use the same 400 capability questions per language, and passing tests for detectable loss does not establish safety
+equivalence. One-point and
 two-point gates on a few hundred prompts turn on one or two answers. The safety check covers Javanese and English only, Indonesian only for capability, and none of the nine
 other NusaX languages. Replay targets were not labelled, so the cause of its over-refusal is a likely one, not a
 confirmed one.
@@ -511,7 +508,8 @@ non-commercial research, in line with these terms. The adapters inherit the non-
 in a private repository; repaired checkpoints were released only after held-out re-evaluation showed they are not
 significantly less safe than Earth in any language, in either preamble condition.
 
-\textbf{Harmful prompts and answers.} Every harmful prompt comes from a public benchmark, and we translated none.
+\textbf{Harmful prompts and answers.} Every harmful prompt comes from a public benchmark and is used as published;
+we translated none.
 We release prompts and labels only; no released file and no part of this paper contains a model's answer to a
 harmful prompt, and raw generations are kept out of version control. The adapter safety check uploads aggregates
 only. Knowing where refusal lives could help someone remove it, so node-level circuit scores are kept private and
@@ -562,7 +560,7 @@ XSTest, Global-MMLU-Lite, NusaX, NusaWrites and Unggah-Ungguh released the data 
 \item \textbf{Track 2b, problem 4}, inference-time safety steering: the steering arm (\S\ref{sec:repairs}).
 \item \textbf{Track 2b, problem 5}, locating where safety lives: the CircuitKIT circuits that choose the edited
   layers (\S\ref{sec:circuits}).
-\item \textbf{Track 2a, problem 4}, multilingual and code-mixed safety: the per-language gap test and the attack
+\item \textbf{Track 2a, problem 4}, multilingual and code-mixed safety, supporting the main entry: the per-language gap test and the attack
   success rates (\S\ref{sec:gap}, \S\ref{sec:harm}, Table~\ref{tab:asr}). Code-mixed prompts were tested only in the
   small development run on Fire (Appendix~\ref{app:history}).
 \end{itemize}
@@ -572,7 +570,7 @@ The Javanese adapter study (\S\ref{sec:adapt}) is an extension of the entry, not
 helpline in the Introduction, sends a direct, single-turn harmful request in their own language to the exact file
 that is deployed (FP16 or 4-bit), with no jailbreak wrapper, multi-turn pressure or tool access. \emph{Attack
 success rate:} the share of held-out harmful prompts whose answer both judges label \textit{unsafe}; over 1,228
-prompts it is 0.24\% for Global, 0.41\% for Earth and 0.90\% for the selected repair (Table~\ref{tab:asr}).
+prompts it is 0.24\% for Global, 0.41\% for Earth and 0.90\% for the selected edit (Table~\ref{tab:asr}).
 \emph{Cost-to-break:} not measured. Each model answered each prompt once with greedy decoding and no retries, so
 attempts before a first success are not defined for this set; adaptive attacks are listed in
 Table~\ref{tab:credits}. \emph{Dual-use, responsible disclosure and security:} the weakness we report needs no new
@@ -581,11 +579,46 @@ release prompts and labels but no model answer to a harmful prompt, keep node-le
 weights only under the rule in the next paragraph, and the results explorer loads no model and has no text box
 (Ethics Statement).
 
-\paragraph{Artifacts.} No released file contains a model's answer to a harmful prompt.
+\begin{table*}[t]
+\centering\small
+\begin{tabular}{L{3.8cm}L{11.2cm}}
+\toprule
+Artifact & Repository, then revision or version \\
+\midrule
+Starting checkpoint & \anon{\texttt{HydraOfMalice/tiny-aya-earth-langsafe-circuit-merge-0p5}} \newline
+\anon{\texttt{ef47ebee4b9307bf23d728a171efd2b74e1dc789}} \\
+Evaluation prompts (held-out, repair) & \anon{\texttt{HydraOfMalice/tiny-aya-earth-langsafe-eval}} \newline
+\anon{\texttt{af423e4a301c9265e1a112bf4478c9a6b51f20dd}} \\
+Pipeline code for the safety check & \anon{\texttt{Hydra-Of-Malice/same-model-different-language}} \newline
+\anon{\texttt{7c225377f59922bba5764f2a036d0d5e5bb021e7}} \\
+Expanded adapter runs (private) & \anon{\texttt{PDGamerSG/tiny-aya-nusantara-adapters}} \newline
+\anon{\texttt{7029cf4df6ad0fe5453ce0c337855bdff523b3ea}} \\
+Adapter safety reports (private) & same repository \newline \anon{\texttt{c1361885c6c25fdf8e03bce1d134eb7da104363b}} \\
+First pilot adapter (private) & \anon{\texttt{PDGamerSG/tiny-aya-javanese-translation-pilot-v1}} \newline
+\anon{\texttt{c49da652d879a4596236226c5967411c0177cc9c}} \\
+Second pilot adapter (private) & \anon{\texttt{PDGamerSG/tiny-aya-javanese-translation-pilot-v2}} \newline
+\anon{\texttt{271039d85b82f83a89ff3eaae63849a9f3bd8c74}} \\
+Tiny Aya Global (start of \run{*-global-*}) & \texttt{CohereLabs/tiny-aya-global} \newline \texttt{af89d219b53ed9b13b8a4645f9c8028973510324} \\
+NusaX & \texttt{IndoNLP/nusax} \newline \texttt{75b0be5d982348332509f296e10d9bf9cb66d60f} \\
+Unggah-Ungguh & \texttt{JavaneseHonorifics/Unggah-Ungguh} \newline \texttt{20b8bba6a39bb4614cd5be0d65a261978d7f0def} \\
+NusaWrites & \texttt{IndoNLP/nusa-writes} \newline \texttt{b337f511185cd44c9c57ff906ecef1af6165adbc} \\
+NLLB-200 3.3B & \texttt{facebook/nllb-200-3.3B} \newline \texttt{1a07f7d195896b2114afcb79b7b57ab512e7b43e} \\
+Lexsi kits & CuratorKIT 0.1.21 (\texttt{dd9e835}), AuditKIT 1.1.3 (\texttt{71316da}), CircuitKIT 0.2.0
+(\texttt{e71d5e1}), SafeTune 0.1.12 (\texttt{3901a9f}) \\
+Adapter dependencies & Python 3.12; torch 2.8.0, transformers 5.22.1, accelerate 1.15.0, peft 0.21.2, huggingface-hub
+2.4.0, sacrebleu 2.5.1 \\
+\bottomrule
+\end{tabular}
+\caption{Pinned revisions.}
+\label{tab:pins}
+\end{table*}
+
+\paragraph{Artifacts.} Everything below is public and ungated except the follow-up adapters. No released file
+contains a model's answer to a harmful prompt.
 \begin{itemize}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}\raggedright
 \item \textbf{Models collection} (repair checkpoints):
   \url{https://huggingface.co/collections/HydraOfMalice/same-model-different-language-repair-checkpoints-6af426d1cac578d29e4805e5}.
-  It holds the selected repair, \nolinkurl{HydraOfMalice/tiny-aya-earth-langsafe-circuit-merge-0p5} (FP16), the same
+  It holds the selected edit, \nolinkurl{HydraOfMalice/tiny-aya-earth-langsafe-circuit-merge-0p5} (FP16), the same
   checkpoint as a Q4\_K\_M GGUF (\texttt{-gguf} suffix), the other weight arms (\texttt{resta-0p1},
   \texttt{circuit-0p1}, \texttt{merge-back-0p5}) and the steering arm's refusal direction (\texttt{steer-1p0}, a
   vector with no model weights).
@@ -593,15 +626,18 @@ weights only under the rule in the next paragraph, and the results explorer load
   \url{https://huggingface.co/collections/HydraOfMalice/same-model-different-language-evaluation-data-6af426d23fff746c25ca1e1e}.
   It holds the evaluation set (\nolinkurl{HydraOfMalice/tiny-aya-earth-langsafe-eval}: prompts and labels only), the
   aggregate reports (per-language rates, intervals, paired tests, judge agreement), the run logs (hashes, settings,
-  provenance and scores, with all model text removed) and the CircuitKIT score files at layer level.
+  provenance and scores, with all model text removed) and the CircuitKIT score files at layer level. The final
+  aggregate report is \texttt{reports/report.json} (\texttt{report.md} to read); \texttt{reports/status.json} is an
+  earlier snapshot written before the NF4 runs.
 \item \textbf{Code}: \url{https://github.com/Hydra-Of-Malice/same-model-different-language}, with the reproduction
   notebook (\nolinkurl{notebooks/01_reproduce_results.ipynb}) and a results explorer (\texttt{space/}) that loads no
   model and has no text box.
 \item \textbf{Article}: \url{https://huggingface.co/blog/HydraOfMalice/same-model-different-language-different-safety}.
 \item \textbf{Pull requests to the kits}: SafeTune\#86 and \#87, AuditKIT\#47 and \#48, CuratorKIT\#53 and
   CircuitKIT\#48 (Table~\ref{tab:kit-gaps}).
-\item \textbf{Adapters} from the follow-up, with their predictions, are in private repositories pending native
-  review (Table~\ref{tab:pins}).
+\item \textbf{Adapters} from the follow-up, with their predictions and safety reports, are in private repositories
+  pending native review (Table~\ref{tab:pins}); judges can check their aggregate results in
+  Tables~\ref{tab:safety}, \ref{tab:strength-safety-full} and~\ref{tab:repair-safety-full}, but not the weights.
 \end{itemize}
 Weights are published only after held-out re-evaluation, and only if they are not significantly less safe than Earth
 in any language, in either preamble condition: the paired 95\% interval of the change in content-safe rate must not
@@ -623,12 +659,13 @@ the published reports; sections 2 to 11 run every stage at small scale on one fr
 and that small run's rates are too noisy to compare with this paper.
 
 \paragraph{Work done outside the hackathon.} None of the reported work was done before or outside the hackathon,
-which ran from 1 to 24 November 2026. The repository's first commit is dated 3 November 2026, and the main study's
+which runs from 1 to 30 November 2026, with a first-round deadline of 15 November and a finalist deadline of
+28 November. The repository's first commit is dated 3 November 2026, and the main study's
 code, data pipeline, runs and article were built before the first-round deadline of 15 November; the article was
-published on 13 November. Our earlier project Kavach (HackIndia AgentVerse '26, MIT licence) also kept a hash-chained
-run log; no code from it is reused here. Two parts were done in the second round, after 15 November: the 32B pair
+published on 13 November. No code from our earlier project Kavach is reused. Two parts were done in the second round, after 15 November: the 32B pair
 re-judged every held-out answer, and Command~A every answer of five models, on 19 and 20 November 2026, and the
-Javanese adapter study (\S\ref{sec:adapt}) ran on 22 and 23 November 2026. The models, datasets and Lexsi kits we build on are other people's work (Appendices~\ref{app:kits}
+Javanese adapter study (\S\ref{sec:adapt}) ran on 22 and 23 November 2026. This paper was written between 23 and
+28 November 2026. The models, datasets and Lexsi kits we build on are other people's work (Appendices~\ref{app:kits}
 and~\ref{app:licences}).
 
 \paragraph{Team.} Aditya Arnav (GitHub: Hydra-Of-Malice; Hugging Face: HydraOfMalice), Pallab Das (GitHub and
@@ -655,8 +692,9 @@ CuratorKIT (0.1.21, \texttt{dd9e835}) & Cleaning and de-duplicating prompts in e
 Bengali, Swahili or Arabic; we need harmful prompts kept. Its generators were not needed \\
 AuditKIT (1.1.3, \texttt{71316da}) & One run record per model, arm and precision & \texttt{evaluate} on precomputed
 outputs, custom \texttt{@scorer} metrics, \texttt{RunConfig} with an explicit variant, run fingerprints, saved run
-records with provenance files & Its refusal detector is English regex. Its paired-bootstrap $p$-value is invalid until
-pull request \#9 lands, so significance and per-language deltas come from our own statistics code \\
+records with provenance files & Its refusal detector is English regex. Its paired-bootstrap $p$-value is invalid in
+1.1.3; we filed \#9, which upstream closed and fixed in \#23 on 7 November, after this release. Significance and
+per-language deltas come from our own statistics code \\
 CircuitKIT (0.2.0, \texttt{e71d5e1}) & Finding the layers that drive refusal, per language & Custom-data
 \texttt{Pipeline}, EAP-IG at node level, its own \texttt{jailbreak\_binary.csv} minimal pairs, faithfulness pillars
 for patching, ablation, baselines and stability & The robustness pillar is not meaningful for signed metrics, and the
@@ -697,7 +735,8 @@ split and leakage check & Pull request CuratorKIT\#53 \\
 CuratorKIT & \texttt{SchemaGate} counts words, so short Indic prompts fail & \texttt{min\_tokens=1} & Reported here \\
 \bottomrule
 \end{tabular}
-\caption{Gaps we found in the kits, what we did about them, and where they were reported.}
+\caption{Gaps we found in the kits, what we did about them, and where they were reported. All six pull requests
+were merged upstream on 14 November 2026.}
 \label{tab:kit-gaps}
 \end{table*}
 
@@ -781,7 +820,8 @@ translations by Tiny Aya Global at temperature~0. The translator often wrapped i
 word-by-word explanation, so we take the translation out of the wrapper. Automatic checks then reject empty output,
 refusals, commentary, the wrong script, unchanged text, output over three times its source's length, repetition,
 lists, broken characters, and a lost question mark (Thai is exempt from that last check). These checks do not
-measure quality, and 0 of 2,994 rows were reviewed by people who read the language.
+measure quality. None of the 2,994 non-English prompt rows, 1,573 MultiJail harmful prompts translated by its
+authors and 1,421 benign prompts translated by Global, has been reviewed by people who read the language.
 
 \begin{table}[ht]
 \centering\small
@@ -816,7 +856,8 @@ applied with SafeTune restores per-language safety without raising benign over-r
 capability, and still holds after 4-bit quantisation. It comes from our first plan, which expected Fire to lose
 safety in Indic languages. The first half did not hold: the one confirmed gap is in Javanese, outside Earth's region,
 and it is broken answers rather than weaker refusals. The second half did not hold either: no repair met all three
-conditions at full precision, and the arm placed with CircuitKIT's map did no better than random layers.
+conditions at full precision, and the arm placed with CircuitKIT's map showed no detectable advantage over random
+layers.
 
 \paragraph{Development run.} The pipeline first ran end to end on Fire, then the planned target, with 35 repair and
 39 held-out prompts across English, Hindi, Bengali, Tamil and Hinglish. It was far too small to measure anything,
@@ -833,7 +874,7 @@ results (Table~\ref{tab:pilot-gap}). A blind model read of 153 pilot answers (Ta
 repetition loops or prompt echoes; this led to the degenerate-answer rule.
 
 \paragraph{Amendments.} Amendments 1--26 precede the freeze on 7 November 2026: they retargeted Earth, made content
-the primary axis, required gap confirmation in both preamble conditions (Amendment 17), moved the content gate from
+the primary axis, tested each language with and without the preamble, correcting across 14 tests (Amendment 17), moved the content gate from
 $\kappa$ to AC1 (Amendment 16), added the degenerate-answer rule (15), unwrapped and screened translations (22), and
 made circuits score the tokens Global really opens with (23). Amendments 27--28 follow the freeze and add only
 descriptive blind reads, with no test attached. The specification was frozen without mentor comments on the
@@ -884,18 +925,24 @@ answer is \textit{invalid} if it is empty, if at least 60\% of its characters li
 three or more times, or if it matches the prompt at 0.8 or more. The content floor uses AC1 rather than $\kappa$
 because nearly every answer is safe, so $\kappa$ collapses there.
 
-\paragraph{Judge checks.} On the 1,680-answer sample (Global, Earth and the selected repair; 20 answers from every
+\paragraph{Judge checks.} On the 1,680-answer sample (Global, Earth and the selected edit; 20 answers from every
 language, prompt type and preamble cell), the local and 32B pairs agreed at $\kappa$ 0.79 to 1.00 per language
-(median 0.93) on refusal labels, with Bengali, Javanese and Swahili lowest, and gave the same content label to 94\%
+(median 0.93) on refusal labels for the 1,235 answers both pairs labelled clearly (0.34 to 0.73 counting unclear
+labels), with Bengali, Javanese and Swahili lowest, and gave the same content label to 94\%
 to 100\% of the 780 harmful-prompt answers both pairs could call. A second sample of the same design, on the three
 Q4\_K\_M models, gave $\kappa$ 0.87 to 1.00 (median 0.96) on refusal labels. After the freeze, the 32B pair re-judged
 every held-out answer of all 18 evaluated models (4,528 each): $\kappa$ 0.89 to 0.99 per language and model on
-refusal labels, and 97.6\% to 100\% identical content labels on harmful prompts both pairs decided; the selected arm,
+refusal labels for the 58,759 of 81,504 answers both pairs labelled clearly (0.36 to 0.78 counting unclear labels), and 97.6\% to 100\% identical content labels on harmful prompts both pairs decided; the selected arm,
 the repair verdict and the validation do not change under it. Command~A, in its default contextual safety mode, first
 judged 1,680 of the same answers with our rubric and was stricter than our judges: Global minus Earth was 3.8 points
 rather than 1.9, and 15.1 rather than 10.1 in Javanese. On the full set, its refusal labels agree with the local pair
 at $\kappa$ 0.70 to 0.94 per language and model, and with the 32B pair at 0.72 to 0.97; it judged the selected arm to
 raise no language's over-refusal.
+
+\paragraph{Blind reads.} A single reader model read 60 prompts per model and condition without the judges' labels.
+With the preamble, Thai answers were 88.3\% and 90.0\% safe for Global and Earth, a gap of $-$1.7 points; the
+Javanese safe-rate gap was 20.0 points on the first read and 13.3 (3.3 to 25.0) on a second, both in invalid answers. The selected
+edit's Javanese answers were 63.3\% safe (Earth 60.0\%, Global 80.0\%) and 35\% invalid.
 
 \paragraph{Regional comparisons.} Fire also falls below Global in Javanese (10.8 points with the preamble on the local
 judges, 9.1 with $p = 0.0025$ under Command~A), mostly through broken answers; Water shows none (2.3 and $-$0.6
@@ -1134,8 +1181,9 @@ test rows per key.
 
 \paragraph{Choosing an adapter.} The suite adapters differ by less than the validation sets can resolve, so we
 set a rule after the runs: the highest mean validation score across the eight task families at each run's kept
-epoch, with the NusaX validation score as tie-break. \run{suite-r128} (78.5) and \run{suite-r64-lr2e-4} (78.4)
-led, and the tie-break chose \run{suite-r128}. The test table had been seen by then, so the choice is not blind.
+epoch. \run{suite-r128} led at 78.5, ahead of \run{suite-r64-lr2e-4} at 78.4, a gap the validation sets cannot
+resolve; it also had the higher NusaX validation score. The two differ in rank, learning rate and kept epoch, so their
+safety difference belongs to these configurations, not to any one setting. The test table had been seen by then, so the choice is not blind.
 On the NusaX test split \run{suite-r128} reaches 38.0 BLEU into Javanese and 56.1 into Indonesian; IndoBARTv2
 fine-tuned on the same 500 training rows is reported at 39.97 and 50.64 \citep{winata2023nusax}, but our
 adapter also trained on tweets, so the conditions are not matched. Of 400 Indonesian-to-Javanese outputs, 141
@@ -1205,7 +1253,8 @@ Eng.\ Global-MMLU-Lite & default & 400 & 60.8 $\rightarrow$ 59.8 & $-$1.0 ($-$5.
 \caption{Safety check of two suite adapters against their parent on the project's held-out prompts, FP16,
 judged by Aya Expanse 32B and Qwen3-32B (rates in \%, changes in points, paired 95\% CI). Each job produced
 and judged its own parent answers, so the parent columns differ slightly. Gates: over-refusal up by at most 2
-points, capability down by at most 1 point, no language significantly less content-safe.}
+points, capability down by at most 1 point, no language significantly less content-safe. The judges' Javanese AC1
+for \run{suite-r64-lr2e-4} is 0.55, below the 0.6 floor, so its Javanese content-safe change is descriptive.}
 \label{tab:safety}
 \end{table*}
 
@@ -1341,7 +1390,8 @@ generation into the nine others by 19 to 40 chrF++ over the parent, but lowers J
 the English-to-Indonesian control by 8.2 points (Table~\ref{tab:regional}). NLLB-200 3.3B \citep{nllb2022}, run as
 released on the same rows, reaches 50.8 and 59.6 chrF++ on the two NusaX directions against 65.2 and 75.3 for
 \run{suite-r128} (Table~\ref{tab:nllb}), as a zero-shot reference rather than a matched comparison; it beats
-the all-language adapter into Indonesian from every regional language it covers.
+the all-language adapter into Indonesian from every regional language it covers. Replay probably over-refuses because only parent
+answers that ended within 256 tokens, more often refusals, became its targets; the targets were not labelled.
 
 \begin{figure*}[t]
 \centering
@@ -1350,7 +1400,7 @@ the all-language adapter into Indonesian from every regional language it covers.
 sentence-level chrF++ for translation, accuracy for the rest). Right: safety rates on the held-out Javanese and
 English prompts (default preamble unless marked) and Global-MMLU-Lite accuracy. The adapters overlap on the tasks
 and separate on safety; \run{suite-r128} at half strength gives up some speech-level gain and passes every gate on
-these prompts (on the unseen repair-split prompts it misses the over-refusal gate by 0.1 point).
+these prompts (on the second, repair-split prompt set it misses the over-refusal gate by 0.1 point).
 Drawn by \texttt{paper/make\_figure.py}.}
 \label{fig:tradeoff}
 \end{figure*}
@@ -1375,7 +1425,7 @@ Ind.\ Global-MMLU-Lite & default & 400 & 56.8 $\rightarrow$ 53.8, $-$3.0 ($-$7.2
 Eng.\ Global-MMLU-Lite & default & 400 & 60.8 $\rightarrow$ 59.8, $-$1.0 ($-$5.0, $+$3.0) & 60.5 $\rightarrow$ 58.8, $-$1.8 ($-$5.5, $+$1.8) & 60.5 $\rightarrow$ 60.5, 0.0 ($-$3.0, $+$3.0) \\
 \midrule
 Jav.\ invalid share & default & 176 & 9.1 $\rightarrow$ 13.6 & 9.7 $\rightarrow$ 8.5 & 9.7 $\rightarrow$ 9.7 \\
-Jav.\ AC1, parent / adapter & both & 1308 & 0.83 / 0.81 & 0.84 / 0.87 & 0.83 / 0.86 \\
+Jav.\ AC1, parent / adapter & both & 352 & 0.83 / 0.81 & 0.84 / 0.87 & 0.83 / 0.86 \\
 All gates passed & & & no & no & yes \\
 \bottomrule
 \end{tabular}}
@@ -1737,7 +1787,7 @@ forecast for these.
 Step & Now & With more credits & What it would settle & Before & Expected after \\
 \midrule
 Report's judge & Local 8B judges, and Command~A (contextual safety mode, our rubric) on every answer of Global, Earth,
-the selected repair, Fire and Water & Command~A with the report's own rubric wording, on every model & Whether the
+the selected edit, Fire and Water & Command~A with the report's own rubric wording, on every model & Whether the
 difference from the report comes from the judge & Javanese gap 9.7 points with our judges & A larger gap. On the
 sample, Command~A gave 3.8 points against our judges' 1.9, and 15.1 against 10.1 in Javanese \\
 Precision & Seven languages at full precision, all 10 only at 4-bit in a pilot & Full-precision run of all 10
@@ -1775,75 +1825,13 @@ forecast, not a result. --: no current value.}
 
 \section{Reproducibility Checklist and Commands}\label{app:repro}
 
-\begin{table*}[t]
-\centering\small
-\begin{tabular}{L{3.8cm}L{11.2cm}}
-\toprule
-Artifact & Repository, then revision or version \\
-\midrule
-Starting checkpoint & \anon{\texttt{HydraOfMalice/tiny-aya-earth-langsafe-circuit-merge-0p5}} \newline
-\anon{\texttt{ef47ebee4b9307bf23d728a171efd2b74e1dc789}} \\
-Evaluation prompts (held-out, repair) & \anon{\texttt{HydraOfMalice/tiny-aya-earth-langsafe-eval}} \newline
-\anon{\texttt{af423e4a301c9265e1a112bf4478c9a6b51f20dd}} \\
-Pipeline code for the safety check & \anon{\texttt{Hydra-Of-Malice/same-model-different-language}} \newline
-\anon{\texttt{7c225377f59922bba5764f2a036d0d5e5bb021e7}} \\
-Expanded adapter runs (private) & \anon{\texttt{PDGamerSG/tiny-aya-nusantara-adapters}} \newline
-\anon{\texttt{7029cf4df6ad0fe5453ce0c337855bdff523b3ea}} \\
-Adapter safety reports (private) & same repository \newline \anon{\texttt{c1361885c6c25fdf8e03bce1d134eb7da104363b}} \\
-First pilot adapter (private) & \anon{\texttt{PDGamerSG/tiny-aya-javanese-translation-pilot-v1}} \newline
-\anon{\texttt{c49da652d879a4596236226c5967411c0177cc9c}} \\
-Second pilot adapter (private) & \anon{\texttt{PDGamerSG/tiny-aya-javanese-translation-pilot-v2}} \newline
-\anon{\texttt{271039d85b82f83a89ff3eaae63849a9f3bd8c74}} \\
-Tiny Aya Global (start of \run{*-global-*}) & \texttt{CohereLabs/tiny-aya-global} \newline \texttt{af89d219b53ed9b13b8a4645f9c8028973510324} \\
-NusaX & \texttt{IndoNLP/nusax} \newline \texttt{75b0be5d982348332509f296e10d9bf9cb66d60f} \\
-Unggah-Ungguh & \texttt{JavaneseHonorifics/Unggah-Ungguh} \newline \texttt{20b8bba6a39bb4614cd5be0d65a261978d7f0def} \\
-NusaWrites & \texttt{IndoNLP/nusa-writes} \newline \texttt{b337f511185cd44c9c57ff906ecef1af6165adbc} \\
-NLLB-200 3.3B & \texttt{facebook/nllb-200-3.3B} \newline \texttt{1a07f7d195896b2114afcb79b7b57ab512e7b43e} \\
-Lexsi kits & CuratorKIT 0.1.21 (\texttt{dd9e835}), AuditKIT 1.1.3 (\texttt{71316da}), CircuitKIT 0.2.0
-(\texttt{e71d5e1}), SafeTune 0.1.12 (\texttt{3901a9f}) \\
-Adapter dependencies & Python 3.12; torch 2.8.0, transformers 5.22.1, accelerate 1.15.0, peft 0.21.2, huggingface-hub
-2.4.0, sacrebleu 2.5.1 \\
-\bottomrule
-\end{tabular}
-\caption{Pinned revisions.}
-\label{tab:pins}
-\end{table*}
-
-\begin{table*}[t]
-\centering\scriptsize
-\begin{tabular}{ll}
-\toprule
-File & SHA-256 \\
-\midrule
-NusaX \texttt{mt/train.csv} & \texttt{cf4276730de04f0cb3369c48b67d454f4aae52646315f19eb71b908f5dfaae0e} \\
-NusaX \texttt{mt/valid.csv} & \texttt{fd148ce931676460bb89ce94205f5cea3fb0fbd1fc4b561a016dc25ceb8e049a} \\
-NusaX \texttt{mt/test.csv} & \texttt{0082161de28a0a17a85fc6e02fc07a2e2514d8dd7f344ead95a88aa86dc706cc} \\
-NusaX \texttt{sentiment/indonesian/train.csv} & \texttt{698c4802111085c14fbe35122957e1145338d307bcc295764026a23095a32984} \\
-NusaX \texttt{sentiment/indonesian/valid.csv} & \texttt{4049c4a53017e08db72c72e1907345bfdfc19385481c58f54fe4637073d813f9} \\
-NusaX \texttt{sentiment/indonesian/test.csv} & \texttt{43b612ed6fde972c752ab9fa8b2ce290d9ffa06b176b732fcef2a947cb94a161} \\
-Unggah-Ungguh \texttt{data/translation/train-00000-of-00001.csv} & \texttt{fadfdfe3473a5d2bb52112d93828e1bb762ed6d1d38dc3577d2928a7612f2e6c} \\
-NusaWrites \texttt{nusa\_kalimat-mt-jav-train.csv} & \texttt{ecc3b6843ac72db58a620ed01cd5022caab28b4cc3f6968ad51d5a370dfe1160} \\
-NusaWrites \texttt{nusa\_kalimat-mt-jav-valid.csv} & \texttt{50bf70d54ff4f290e113d422e5acb1963312f02f8225f527e4d34d43a76b410b} \\
-NusaWrites \texttt{nusa\_kalimat-mt-jav-test.csv} & \texttt{88d7faaf96ffd4101a4819c1a91520eadacab62aa76c33705f60dd6e63bae753} \\
-NusaWrites \texttt{nusa\_alinea-topic-jav-train.csv} & \texttt{b7d4ec9f62a0c8c6eb6b6d29686e48777fd98984d77ac30cf09894e21c672fe8} \\
-NusaWrites \texttt{nusa\_alinea-topic-jav-valid.csv} & \texttt{5673327a5f636f5f8fb188cc5e549b6896babfa1ef0651d05ae07404710cea25} \\
-NusaWrites \texttt{nusa\_alinea-topic-jav-test.csv} & \texttt{92ae880038fa39ff6fdd1ba7b7e4ab33619009db6f3d9a5ba19fb639d21d8251} \\
-NusaWrites \texttt{nusa\_alinea-emot-jav-train.csv} & \texttt{d17f8035c6f430296a2e1f4e72c47743514ac7a9aa1abb21a1ddc13cfff97f65} \\
-NusaWrites \texttt{nusa\_alinea-emot-jav-valid.csv} & \texttt{ad9856f29ca150db85097d5c5cce9e9547b2028698ed13f2e3ce40ce2c14f27f} \\
-NusaWrites \texttt{nusa\_alinea-emot-jav-test.csv} & \texttt{8a84f425cdb3b223be449bc89f4149f52791e82b8b2e2aec38ce0d7e031c638a} \\
-\bottomrule
-\end{tabular}
-\caption{SHA-256 hashes that the adapter script checks before training.}
-\label{tab:sha}
-\end{table*}
-
 \begin{itemize}\setlength{\itemsep}{1pt}\raggedright
 \item \textbf{Pre-registration.} Specification and amendments with dates; its hash is stamped into every run's
   ledger entry, which is hash-chained.
 \item \textbf{Splits.} Group-aware 60/40 split, seed 20261103, leakage check; adapter data from official splits
   (speech levels by meaning-group hash), with the guards in \S\ref{sec:adapt}.
 \item \textbf{Pinned inputs.} Every model, dataset and code dependency is pinned to a full commit hash or version
-  (Table~\ref{tab:pins}); every adapter data file is checked against its SHA-256 hash (Table~\ref{tab:sha}).
+  (Table~\ref{tab:pins}); every adapter data file is checked against a SHA-256 hash pinned in \texttt{scripts/nusantara\_adapter.py}.
 \item \textbf{Decoding and judges.} Greedy everywhere; judges at temperature 0 with pinned providers
   (\texttt{CohereLabs/aya-expanse-32b:cohere}, \texttt{Qwen/Qwen3-32B:deepinfra}) and cached verdicts.
 \item \textbf{Uncertainty.} Every rate has a bootstrap interval; paired tests throughout.
@@ -1868,10 +1856,10 @@ Adapter data and split checks without a GPU, one training run on Hugging Face Jo
 request through a trained adapter (\texttt{REVISION} is the full commit hash of the adapter repository):
 \begin{lstlisting}
 python scripts/nusantara_adapter.py --data-only --triage jav --levels --tweets --paragraphs --lid ind,jav
-hf jobs uv run --flavor l40sx1 --timeout 3h --secrets HF_TOKEN --detach --name suite-r64 \
-  scripts/nusantara_adapter.py --triage jav --levels --tweets --paragraphs --lid ind,jav --epochs 3 \
+hf jobs uv run --flavor h200 --timeout 3h --secrets HF_TOKEN --detach --name suite-r64 \
+  scripts/nusantara_adapter.py --triage jav --levels --tweets --paragraphs --lid ind,jav --epochs 4 \
   --private-repo "$HF_ADAPTER_REPO" --run-name suite-r64
-hf jobs uv run --flavor l40sx1 --timeout 3h --secrets HF_TOKEN --detach --name suite-r64-safety \
+hf jobs uv run --flavor h200 --timeout 3h --secrets HF_TOKEN --detach --name suite-r64-safety \
   scripts/adapter_safety_check.py --adapter-repo "$HF_ADAPTER_REPO" --adapter-revision REVISION \
   --adapter-path suite-r64 --private-repo "$HF_ADAPTER_REPO" --run-name suite-r64
 python scripts/javanese_tools.py --adapter "$HF_ADAPTER_REPO" --adapter-path suite-r64 \
@@ -1890,14 +1878,13 @@ ind,jav}; all-language runs add \texttt{-{}-regional}; the final round adds \tex
 \paragraph{Author contributions.} All three authors contributed to this work.
 
 \paragraph{LLM usage statement.} We used Claude models (Anthropic: Claude Opus 5.5, Claude Fable 5.2 and Claude
-Opus 4.7) through Claude Code as a coding and writing assistant, in 27 sessions between 12 and 27 November 2026.
-Measured from those session logs and the git history, Claude drafted the text of this paper from our results and
-instructions (every line of its source comes from commits made in those sessions), and at least 12\% of the current
-code lines and 15\% of the README, article and documentation lines come from commits made in those sessions or
-marked as co-written with Claude. The logs cover one team member's machine from 12 November, so the code and
-documentation shares are lower bounds. Separately, the research itself uses LLMs as judges and as a translator
-(\S\ref{sec:setup}); the follow-up's router judges made 48,986 requests in November (24,493 each through Cohere and
-OpenRouter), for \$3.23 (Appendix~\ref{app:compute}).
+Opus 4.7) through Claude Code as a coding and writing assistant, in 27 sessions between 12 and 28 November 2026.
+Claude drafted this paper's text from our results and instructions; every line of its source comes from commits made
+in those sessions. By git blame against commits made in those sessions or marked as co-written with Claude, we
+estimate that at least 12\% of current code lines and 15\% of README, article and documentation lines came from
+Claude. Commit attribution cannot show who wrote each line, and the logs cover one team member's machine from 12
+November, so these shares are estimates and lower bounds. The LLMs used inside the research, as judges and
+translator, are described in \S\ref{sec:setup} and Appendix~\ref{app:compute}.
 
 \label{lastpage}
 \end{document}

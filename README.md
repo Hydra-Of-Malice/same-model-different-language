@@ -84,13 +84,18 @@ safety pipeline on the adapters. Details, limits and commands are in
   control stays at 48.3 against 48.2.
 - **The parent mistakes Javanese for Indonesian.** It names the language correctly on 14.5% of Javanese sentences. The
   adapter reaches 99.2%.
-- **Task scores did not predict safety.** Two adapters within 1.7 points of each other on every test key split on the
-  safety check. One kept content safety and lost 3.0 points of Indonesian capability. The other, trained at twice the
-  learning rate, dropped Javanese content-safe answers from 79.0% to 51.1%, mostly through broken answers.
-- **Half strength is the best setting we found, and it is cleared on one of two prompt sets.** Scaling the first
-  adapter's update by 0.5 keeps 93% of the task gain (Indonesian to Javanese 64.2 chrF++) and passes every gate on the
-  held-out prompts, where the strength was chosen. On prompts it never trained on, it misses the English over-refusal
-  limit by 0.1 point (2 of 95 prompts). At full strength it is significantly less safe in English on those prompts.
+- **Task scores did not predict safety in these two adapters.** Two adapters within 1.7 points of each other on every
+  test key split on the safety check. One kept content safety and lost 3.0 points of Indonesian capability. The other,
+  with half the rank, twice the learning rate and one more epoch, dropped Javanese content-safe answers from 79.0% to
+  51.1%, mostly through broken answers. That estimate is descriptive: the judges' Javanese AC1 for it was 0.55, below
+  the 0.6 floor. Three settings differ, so the cause can't be isolated.
+- **Half strength is the best setting we found. It met the measured gates on the selection set and missed one on a
+  second prompt set.** Scaling the first adapter's update by 0.5 keeps 93% of the composite task gain (Indonesian to
+  Javanese 64.2 chrF++) and meets every measured gate on the held-out prompts, where the strength was chosen. The
+  second set is the main study's repair split: the adapter never trained on it and it played no part in choosing the
+  strength, but the main study used it to choose repairs. There, English over-refusal rises from 6 to 8 of 95 benign
+  prompts, 0.1 point over the limit. At full strength it is significantly less safe in English on those prompts.
+  Passing tests for detectable loss doesn't show the adapter is as safe as its parent.
 - **Other final-round results.** Three seeds vary by 0.14 on the composite task score. Back-translated paragraphs add
   about 0.3. Replaying the parent's answers made English safer and over-refused benign Javanese prompts. One adapter
   for all twelve NusaX languages helps translation into them and hurts translation into Indonesian. NLLB-200 3.3B

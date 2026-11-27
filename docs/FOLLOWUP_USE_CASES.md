@@ -425,8 +425,8 @@ python scripts/nusantara_adapter.py --data-only --triage jav --levels --tweets -
 With `hf auth login` completed, start a run on Hugging Face Jobs. `--secrets HF_TOKEN` passes the login to the job, which creates the destination as a private repository when needed and refuses to write to a public one:
 
 ```bash
-hf jobs uv run --flavor l40sx1 --timeout 3h --secrets HF_TOKEN --detach --name suite-r64 \
-  scripts/nusantara_adapter.py --triage jav --levels --tweets --paragraphs --lid ind,jav --epochs 3 \
+hf jobs uv run --flavor h200 --timeout 3h --secrets HF_TOKEN --detach --name suite-r64 \
+  scripts/nusantara_adapter.py --triage jav --levels --tweets --paragraphs --lid ind,jav --epochs 4 \
   --private-repo "$HF_ADAPTER_REPO" --run-name suite-r64
 ```
 
@@ -435,7 +435,7 @@ Each run writes `adapter_model.safetensors`, `metrics.json` and `predictions.jso
 Then check the chosen adapter against its parent. `REVISION` is the full commit hash of the adapter repository:
 
 ```bash
-hf jobs uv run --flavor l40sx1 --timeout 3h --secrets HF_TOKEN --detach --name suite-r64-safety \
+hf jobs uv run --flavor h200 --timeout 3h --secrets HF_TOKEN --detach --name suite-r64-safety \
   scripts/adapter_safety_check.py --adapter-repo "$HF_ADAPTER_REPO" --adapter-revision REVISION \
   --adapter-path suite-r64 --private-repo "$HF_ADAPTER_REPO" --run-name suite-r64
 ```
