@@ -556,13 +556,30 @@ XSTest, Global-MMLU-Lite, NusaX, NusaWrites and Unggah-Ungguh released the data 
 
 \section{Submission Details}\label{app:submission}
 
-\paragraph{Tracks and problem statements.} Track 2b, problem 2, repairing safety drift without retraining, is the
-main entry (\S\ref{sec:repairs}). Track 2b, problem 4, inference-time safety steering, is covered by the steering arm
-(\S\ref{sec:repairs}); Track 2b, problem 5, locating where safety lives, by the CircuitKIT circuits that choose the
-edited layers (\S\ref{sec:circuits}); and Track 2a, problem 4, multilingual and code-mixed safety, by the
-per-language gap test and the attack success rates (\S\ref{sec:gap}, \S\ref{sec:harm}, Table~\ref{tab:asr}).
-Code-mixed prompts were tested only in the small development run on Fire (Appendix~\ref{app:history}). The Javanese
-adapter study (\S\ref{sec:adapt}) is an extension of the entry, not a further problem statement.
+\paragraph{Tracks and problem statements.}
+\begin{itemize}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}\raggedright
+\item \textbf{Track 2b, problem 2}, repairing safety drift without retraining: the main entry (\S\ref{sec:repairs}).
+\item \textbf{Track 2b, problem 4}, inference-time safety steering: the steering arm (\S\ref{sec:repairs}).
+\item \textbf{Track 2b, problem 5}, locating where safety lives: the CircuitKIT circuits that choose the edited
+  layers (\S\ref{sec:circuits}).
+\item \textbf{Track 2a, problem 4}, multilingual and code-mixed safety: the per-language gap test and the attack
+  success rates (\S\ref{sec:gap}, \S\ref{sec:harm}, Table~\ref{tab:asr}). Code-mixed prompts were tested only in the
+  small development run on Fire (Appendix~\ref{app:history}).
+\end{itemize}
+The Javanese adapter study (\S\ref{sec:adapt}) is an extension of the entry, not a further problem statement.
+
+\paragraph{Track 2a items.} \emph{Threat model:} an ordinary user of a local multilingual deployment, such as the
+helpline in the Introduction, sends a direct, single-turn harmful request in their own language to the exact file
+that is deployed (FP16 or 4-bit), with no jailbreak wrapper, multi-turn pressure or tool access. \emph{Attack
+success rate:} the share of held-out harmful prompts whose answer both judges label \textit{unsafe}; over 1,228
+prompts it is 0.24\% for Global, 0.41\% for Earth and 0.90\% for the selected repair (Table~\ref{tab:asr}).
+\emph{Cost-to-break:} not measured. Each model answered each prompt once with greedy decoding and no retries, so
+attempts before a first success are not defined for this set; adaptive attacks are listed in
+Table~\ref{tab:credits}. \emph{Dual-use, responsible disclosure and security:} the weakness we report needs no new
+attack method, and the size of Earth's gap is already in the model's own report, so we report it openly here. We
+release prompts and labels but no model answer to a harmful prompt, keep node-level circuit scores private, publish
+weights only under the rule in the next paragraph, and the results explorer loads no model and has no text box
+(Ethics Statement).
 
 \paragraph{Artifacts.} No released file contains a model's answer to a harmful prompt.
 \begin{itemize}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}\raggedright
@@ -1692,9 +1709,11 @@ licence from Cohere, whose price we do not know, and we did not test closed mode
 GPU costs \$197.10 a month (RTX A5000, RunPod Secure, \$0.27 per hour) or \$365.00 (T4, Hugging Face Inference
 Endpoints, \$0.50 per hour), against \$63.48 to \$909.60 for five closed-model APIs at list prices checked on 5
 November 2026. At this volume the cheapest closed models cost less than one always-on GPU; one A5000 matches the
-cheapest at about 1.86 million requests a month. These GPU figures leave out engineering time and licences, and we
-measured throughput only on the laptop RTX 4060 (159 output tokens per second, with llama.cpp serving the
-full-precision model to 12 requests at once). The case for self-hosting rests less on cost than on keeping data on
+cheapest at about 1.86 million requests a month. Per 1,000 replies at this volume, that is \$0.33 (A5000) or
+\$0.61 (T4) against \$0.11 to \$1.52 for the closed models. These GPU figures leave out engineering time and
+licences, and we measured throughput only on the laptop RTX 4060 (159 output tokens per second, with llama.cpp
+serving the full-precision model to 12 requests at once). At that rate 1,000 replies of 200 tokens take about 21
+GPU-minutes, about \$0.09 at the A5000's hourly price if it ran as fast and stayed fully busy. The case for self-hosting rests less on cost than on keeping data on
 one's own hardware, running offline and testing the exact file that is deployed.
 
 \section{With More Credits}\label{app:credits}
@@ -1755,24 +1774,6 @@ forecast, not a result. --: no current value.}
 \end{table*}
 
 \section{Reproducibility Checklist and Commands}\label{app:repro}
-
-\begin{itemize}\setlength{\itemsep}{1pt}\raggedright
-\item \textbf{Pre-registration.} Specification and amendments with dates; its hash is stamped into every run's
-  ledger entry, which is hash-chained.
-\item \textbf{Splits.} Group-aware 60/40 split, seed 20261103, leakage check; adapter data from official splits
-  (speech levels by meaning-group hash), with the guards in \S\ref{sec:adapt}.
-\item \textbf{Pinned inputs.} Every model, dataset and code dependency is pinned to a full commit hash or version
-  (Table~\ref{tab:pins}); every adapter data file is checked against its SHA-256 hash (Table~\ref{tab:sha}).
-\item \textbf{Decoding and judges.} Greedy everywhere; judges at temperature 0 with pinned providers
-  (\texttt{CohereLabs/aya-expanse-32b:cohere}, \texttt{Qwen/Qwen3-32B:deepinfra}) and cached verdicts.
-\item \textbf{Uncertainty.} Every rate has a bootstrap interval; paired tests throughout.
-\item \textbf{Not yet available.} Native-speaker labels; more than one seed for any adapter configuration except
-  back-translation (three seeds, Table~\ref{tab:final-runs}); sampling-based decoding.
-\item \textbf{Release.} Prompts, labels, aggregate reports, provenance logs and repaired checkpoints are public
-  (\anon{\url{https://huggingface.co/collections/HydraOfMalice/same-model-different-language-repair-checkpoints-6af426d1cac578d29e4805e5}});
-  code: \anon{\url{https://github.com/Hydra-Of-Malice/same-model-different-language}}. Adapters and their
-  predictions are in a private repository pending native review.
-\end{itemize}
 
 \begin{table*}[t]
 \centering\small
@@ -1835,6 +1836,24 @@ NusaWrites \texttt{nusa\_alinea-emot-jav-test.csv} & \texttt{8a84f425cdb3b223be4
 \caption{SHA-256 hashes that the adapter script checks before training.}
 \label{tab:sha}
 \end{table*}
+
+\begin{itemize}\setlength{\itemsep}{1pt}\raggedright
+\item \textbf{Pre-registration.} Specification and amendments with dates; its hash is stamped into every run's
+  ledger entry, which is hash-chained.
+\item \textbf{Splits.} Group-aware 60/40 split, seed 20261103, leakage check; adapter data from official splits
+  (speech levels by meaning-group hash), with the guards in \S\ref{sec:adapt}.
+\item \textbf{Pinned inputs.} Every model, dataset and code dependency is pinned to a full commit hash or version
+  (Table~\ref{tab:pins}); every adapter data file is checked against its SHA-256 hash (Table~\ref{tab:sha}).
+\item \textbf{Decoding and judges.} Greedy everywhere; judges at temperature 0 with pinned providers
+  (\texttt{CohereLabs/aya-expanse-32b:cohere}, \texttt{Qwen/Qwen3-32B:deepinfra}) and cached verdicts.
+\item \textbf{Uncertainty.} Every rate has a bootstrap interval; paired tests throughout.
+\item \textbf{Not yet available.} Native-speaker labels; more than one seed for any adapter configuration except
+  back-translation (three seeds, Table~\ref{tab:final-runs}); sampling-based decoding.
+\item \textbf{Release.} Prompts, labels, aggregate reports, provenance logs and repaired checkpoints are public
+  (\anon{\url{https://huggingface.co/collections/HydraOfMalice/same-model-different-language-repair-checkpoints-6af426d1cac578d29e4805e5}});
+  code: \anon{\url{https://github.com/Hydra-Of-Malice/same-model-different-language}}. Adapters and their
+  predictions are in a private repository pending native review.
+\end{itemize}
 
 \paragraph{Commands.} Main pipeline (set-up, tests, small integration run, full run; \texttt{-{}-family earth} is
 required because the script defaults to Fire, and a rerun resumes after an interruption):
