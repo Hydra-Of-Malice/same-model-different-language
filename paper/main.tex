@@ -632,7 +632,7 @@ Javanese adapter study (\S\ref{sec:adapt}) ran on 22 and 23 November 2026. The m
 and~\ref{app:licences}).
 
 \paragraph{Team.} Aditya Arnav (GitHub: Hydra-Of-Malice; Hugging Face: HydraOfMalice), Pallab Das (GitHub and
-Hugging Face: PDGamerSG) and Sriram (GitHub: Genziitian; Hugging Face: sriramdevs).
+Hugging Face: PDGamerSG) and Sriram (GitHub: Genziitian; Hugging Face: sriramdevs). Author contributions and LLM use: Appendix~\ref{app:llm}.
 
 
 \section{Lexsi Kits: Features, Omissions and Gaps}\label{app:kits}
@@ -1884,6 +1884,20 @@ ind,jav}; all-language runs add \texttt{-{}-regional}; the final round adds \tex
 -{}-epochs 4 -{}-num-beams 4}, \texttt{-{}-back-translate REPO@SHA:suite-r128}, \texttt{-{}-seed}, \texttt{-{}-replay} or
 \texttt{-{}-scales 0.75} as Appendix~\ref{app:final} describes. Safety checks at reduced strength add
 \texttt{-{}-adapter-scale}, and \texttt{scripts/adapter\_eval.py} scores an adapter at several strengths.\par}
+
+\section{Author Contributions and LLM Usage}\label{app:llm}
+
+\paragraph{Author contributions.} All three authors contributed to this work.
+
+\paragraph{LLM usage statement.} We used Claude models (Anthropic: Claude Opus 5.5, Claude Fable 5.2 and Claude
+Opus 4.7) through Claude Code as a coding and writing assistant, in 27 sessions between 12 and 27 November 2026.
+Measured from those session logs and the git history, Claude drafted the text of this paper from our results and
+instructions (every line of its source comes from commits made in those sessions), and at least 12\% of the current
+code lines and 15\% of the README, article and documentation lines come from commits made in those sessions or
+marked as co-written with Claude. The logs cover one team member's machine from 12 November, so the code and
+documentation shares are lower bounds. Separately, the research itself uses LLMs as judges and as a translator
+(\S\ref{sec:setup}); the follow-up's router judges made 48,986 requests in November (24,493 each through Cohere and
+OpenRouter), for \$3.23 (Appendix~\ref{app:compute}).
 
 \label{lastpage}
 \end{document}
